@@ -414,7 +414,7 @@
             fallback.target = "_blank";
             fallback.rel = "noopener";
             fallback.style.cssText = `position:relative;display:block;width:100%;aspect-ratio:16/9;border-radius:6px;border:1px solid rgb(49, 50, 68);background:#000 center/cover no-repeat;overflow:hidden;`;
-            fallback.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><div style="width:68px;height:48px;background:rgba(0,0,0,0.65);border-radius:14%;display:flex;align-items:center;justify-content:center;transition:background 0.15s;"><svg fill="#fff" height="60%" viewBox="0 0 24 24" width="60%"><path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3-5.2 3z"></path></svg></div></div>`;
+            fallback.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><svg fill="#fff" height="80px" viewBox="0 0 24 24" width="80px"><path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3-5.2 3z"></path></svg></div>`;
 
             const probe = new Image();
             probe.onload = () => {
