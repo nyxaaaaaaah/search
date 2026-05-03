@@ -454,4 +454,10 @@ export default new Elysia({ adapter: CloudflareAdapter })
     );
     return new Response(resp.body, resp);
   })
+  .all("/*", async () => {
+    const resp = await env.ASSETS.fetch(
+      new Request("https://assets/404.html"),
+    );
+    return new Response(resp.body, resp);
+  })
   .compile();
