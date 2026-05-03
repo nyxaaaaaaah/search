@@ -80,6 +80,7 @@
         scrollbar-color: hsla(255 0 255 / 15%) var(--bg);
         background-color: var(--bg);
         overflow-x: hidden;
+        scrollbar-gutter: stable;
       }
 
       body {
@@ -251,11 +252,6 @@
                     background-repeat: no-repeat;
                     animation: svelte-shimmer 1.5s infinite linear;
                     background-size: var(--shimmer-size) 100%;
-                  }
-
-                  & > .icon {
-                    background-color: #fff;
-                    padding: 2px;
                   }
                 }
 
@@ -549,13 +545,15 @@
         "ddg",
         "k",
         "w",
-        "chatgpt",
+        "claude",
         "wa",
         "nebula",
         "mdn",
         "genius",
         "gi",
-        "crcode",
+        "yt",
+        "chatgpt",
+        "x",
       ]);
 
       function performSearch(rawQuery) {
@@ -563,7 +561,7 @@
         let results = [];
 
         if (query === "") {
-          results = allBangs.filter((b) => b.triggers.some((t) => FEATURED.has(t))).slice(0, 12);
+          results = allBangs.filter((b) => b.triggers.some((t) => FEATURED.has(t))).slice(0, 14);
         } else {
           const scored = allBangs.map((bang) => ({
             bang,

@@ -1108,7 +1108,8 @@ aside {
 
   &.expanded {
     .infobox-attr-row.hidden,
-    .infobox-attr-header.hidden {
+    .infobox-attr-header.hidden,
+    .infobox-profiles.hidden {
       display: flex;
     }
 
@@ -1243,9 +1244,13 @@ aside {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--surface0);
+
+  &.hidden {
+    display: none;
+  }
 }
 
-.infobox-attrs-container > .infobox-profiles:first-child {
+.infobox-attrs > .infobox-profiles:first-child {
   margin-top: 0;
   padding-top: 0;
   border-top: none;

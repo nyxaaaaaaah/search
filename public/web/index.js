@@ -889,13 +889,13 @@
       const attrsContainer = document.createElement("div");
       attrsContainer.className = "infobox-attrs-container";
 
+      const dl = document.createElement("dl");
+      dl.className = "infobox-attrs";
+
+      const VISIBLE_COUNT = 6;
+      const hasHidden = hasAttrs && info.attributes.length > VISIBLE_COUNT;
+
       if (hasAttrs) {
-        const dl = document.createElement("dl");
-        dl.className = "infobox-attrs";
-
-        const VISIBLE_COUNT = 6;
-        const hasHidden = info.attributes.length > VISIBLE_COUNT;
-
         for (let i = 0; i < info.attributes.length; i++) {
           const attr = info.attributes[i];
           if (Array.isArray(attr) && attr.length >= 2) {
@@ -920,23 +920,12 @@
             }
           }
         }
-        attrsContainer.append(dl);
-
-        if (hasHidden) {
-          const toggleBtn = document.createElement("button");
-          toggleBtn.className = "infobox-toggle";
-          toggleBtn.textContent = "show more";
-          toggleBtn.onclick = () => {
-            const isExpanded = attrsContainer.classList.toggle("expanded");
-            toggleBtn.textContent = isExpanded ? "show less" : "show more";
-          };
-          attrsContainer.append(toggleBtn);
-        }
       }
 
       if (profiles.length) {
         const profilesSection = document.createElement("div");
         profilesSection.className = "infobox-profiles";
+        if (hasHidden) profilesSection.classList.add("hidden");
 
         for (const profile of profiles) {
           const link = document.createElement("a");
@@ -958,9 +947,21 @@
 
           profilesSection.append(link);
         }
-        attrsContainer.append(profilesSection);
+        dl.append(profilesSection);
       }
 
+      if (hasHidden) {
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = "infobox-toggle";
+        toggleBtn.textContent = "show more";
+        toggleBtn.onclick = () => {
+          const isExpanded = attrsContainer.classList.toggle("expanded");
+          toggleBtn.textContent = isExpanded ? "show less" : "show more";
+        };
+        dl.append(toggleBtn);
+      }
+
+      attrsContainer.append(dl);
       box.append(attrsContainer);
     }
 
