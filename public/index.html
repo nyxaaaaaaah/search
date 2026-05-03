@@ -81,13 +81,13 @@
           margin-bottom: 2em;
           cursor: pointer;
           user-select: none;
-          transition: transform .2s;
+          transition: transform 0.2s;
 
           &:hover {
-            transform: scale(1.1)
+            transform: scale(1.1);
           }
           &:active {
-            transform: scale(0.9)
+            transform: scale(0.9);
           }
         }
 
@@ -257,7 +257,13 @@
   </head>
   <body>
     <header>
-      <img src="/s/teto_big.webp" style="width: 110px; height: 110px;" alt="teto" class="teto" />
+      <img
+        src="/s/teto_big.webp"
+        style="width: 110px; height: 110px"
+        alt="teto"
+        class="teto"
+        draggable="false"
+      />
       <form action="/">
         <div class="search-container">
           <div class="search-bar">
