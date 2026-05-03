@@ -79,15 +79,16 @@
 
         .teto {
           margin-bottom: 2em;
-          cursor: pointer;
           user-select: none;
           transition: transform 0.2s;
 
-          &:hover {
+          &.is-on {
+            cursor: pointer;
             transform: scale(1.1);
-          }
-          &:active {
-            transform: scale(0.9);
+
+            &:active {
+              transform: scale(0.9);
+            }
           }
         }
 
@@ -299,6 +300,36 @@
         const teto = document.querySelector(".teto");
         if (!teto) return;
 
+        const hitCanvas = document.createElement("canvas");
+        const hitCtx = hitCanvas.getContext("2d", { willReadFrequently: true });
+        const setupHit = () => {
+          hitCanvas.width = teto.naturalWidth;
+          hitCanvas.height = teto.naturalHeight;
+          hitCtx.drawImage(teto, 0, 0);
+        };
+        if (teto.complete && teto.naturalWidth) setupHit();
+        else teto.addEventListener("load", setupHit, { once: true });
+
+        const isOnPlushie = (e) => {
+          if (!hitCanvas.width) return false;
+          const rect = teto.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * hitCanvas.width;
+          const y = ((e.clientY - rect.top) / rect.height) * hitCanvas.height;
+          if (x < 0 || y < 0 || x >= hitCanvas.width || y >= hitCanvas.height) return false;
+          try {
+            return hitCtx.getImageData(x | 0, y | 0, 1, 1).data[3] > 30;
+          } catch {
+            return true;
+          }
+        };
+
+        teto.addEventListener("pointermove", (e) => {
+          teto.classList.toggle("is-on", isOnPlushie(e));
+        });
+        teto.addEventListener("pointerleave", () => {
+          teto.classList.remove("is-on");
+        });
+
         const canvas = document.createElement("canvas");
         canvas.style.cssText =
           "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999";
@@ -380,7 +411,10 @@
           if (!raf) raf = requestAnimationFrame(tick);
         };
 
-        teto.addEventListener("click", spawn);
+        teto.addEventListener("click", (e) => {
+          if (!isOnPlushie(e)) return;
+          spawn(e);
+        });
       })();
     </script>
   </body>
