@@ -462,7 +462,7 @@
           const ip = await (await fetch("https://api.country.is/?fields=city,continent,subdivision,postal,location,asn")).json();
 
           ipFrame.querySelector(".ip").innerText = ip.ip;
-          ipFrame.querySelector(".ipdata").innerHTML = `<img src="https://tiagozip.github.io/asn-data/logos/${ip.asn.number}.png" alt="Organization icon" style="width: 20px;height: 20px;border-radius: 4px;"> ${ip.asn.organization} (AS${ip.asn.number}) • ${ip.city}, ${ip.country}`;
+          ipFrame.querySelector(".ipdata").innerHTML = `<img src="https://tiagozip.github.io/asn-data/logos/${ip.asn.number}.png" alt="Organization icon" style="width: 20px;height: 20px;border-radius: 4px;"> ${ip.asn.organization} (as${ip.asn.number}) // ${ip.city}, ${ip.country}`;
         })();
 
         document.querySelector("#results-all").append(ipFrame);
