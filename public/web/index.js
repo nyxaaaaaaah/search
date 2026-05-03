@@ -24,6 +24,7 @@
       im.onload = () => {
         const nw = im.naturalWidth, nh = im.naturalHeight;
         if (!nw || !nh) return resolve({ ...pick, broken: true });
+        pick = { ...pick, naturalW: nw, naturalH: nh };
 
         try {
           const SCAN = 200;
@@ -144,17 +145,39 @@
       img.loading = "lazy";
       img.onerror = () => wrap.remove();
 
+      const isCount1 = !useGallery && display.length === 1;
+      const visibleW = a.crop ? a.crop.W : a.naturalW;
+      const visibleH = a.crop ? a.crop.H : a.naturalH;
+      const visibleAspect = visibleW && visibleH ? visibleW / visibleH : 1;
+      const useNarrow = isCount1 && visibleAspect < 0.85;
+
+      if (useNarrow) {
+        wrap.classList.add("narrow");
+        wrap.style.setProperty("--aspect", visibleAspect.toFixed(4));
+      }
+
       if (a.crop) {
         wrap.classList.add("cropped");
-        const ratio = Math.max(a.crop.W, a.crop.H);
-        const w = (a.crop.imgW / ratio) * 100;
-        const h = (a.crop.imgH / ratio) * 100;
-        const x = (0.5 - (a.crop.L + a.crop.W / 2) / ratio) * 100;
-        const y = (0.5 - (a.crop.T + a.crop.H / 2) / ratio) * 100;
-        img.style.setProperty("--w", `${w.toFixed(2)}%`);
-        img.style.setProperty("--h", `${h.toFixed(2)}%`);
-        img.style.setProperty("--x", `${x.toFixed(2)}%`);
-        img.style.setProperty("--y", `${y.toFixed(2)}%`);
+        if (useNarrow) {
+          const w = (a.crop.imgW / a.crop.W) * 100;
+          const h = (a.crop.imgH / a.crop.H) * 100;
+          const x = (-a.crop.L / a.crop.W) * 100;
+          const y = (-a.crop.T / a.crop.H) * 100;
+          img.style.setProperty("--w", `${w.toFixed(2)}%`);
+          img.style.setProperty("--h", `${h.toFixed(2)}%`);
+          img.style.setProperty("--x", `${x.toFixed(2)}%`);
+          img.style.setProperty("--y", `${y.toFixed(2)}%`);
+        } else {
+          const ratio = Math.max(a.crop.W, a.crop.H);
+          const w = (a.crop.imgW / ratio) * 100;
+          const h = (a.crop.imgH / ratio) * 100;
+          const x = (0.5 - (a.crop.L + a.crop.W / 2) / ratio) * 100;
+          const y = (0.5 - (a.crop.T + a.crop.H / 2) / ratio) * 100;
+          img.style.setProperty("--w", `${w.toFixed(2)}%`);
+          img.style.setProperty("--h", `${h.toFixed(2)}%`);
+          img.style.setProperty("--x", `${x.toFixed(2)}%`);
+          img.style.setProperty("--y", `${y.toFixed(2)}%`);
+        }
       }
 
       wrap.append(img);
@@ -861,81 +884,84 @@
       }, 1);
     }
 
-    if (info.attributes?.length) {
+    const hasAttrs = info.attributes?.length;
+    if (hasAttrs || profiles.length) {
       const attrsContainer = document.createElement("div");
       attrsContainer.className = "infobox-attrs-container";
 
-      const dl = document.createElement("dl");
-      dl.className = "infobox-attrs";
+      if (hasAttrs) {
+        const dl = document.createElement("dl");
+        dl.className = "infobox-attrs";
 
-      const VISIBLE_COUNT = 6;
-      const hasHidden = info.attributes.length > VISIBLE_COUNT;
+        const VISIBLE_COUNT = 6;
+        const hasHidden = info.attributes.length > VISIBLE_COUNT;
 
-      for (let i = 0; i < info.attributes.length; i++) {
-        const attr = info.attributes[i];
-        if (Array.isArray(attr) && attr.length >= 2) {
-          const isHeader = attr[0]?.includes("<strong>");
-          if (isHeader) {
-            const dt = document.createElement("dt");
-            dt.className = "infobox-attr-header";
-            dt.innerHTML = attr[0];
-            if (i >= VISIBLE_COUNT) dt.classList.add("hidden");
-            dl.append(dt);
-          } else if (attr[1] !== null) {
-            const row = document.createElement("div");
-            row.className = "infobox-attr-row";
-            if (i >= VISIBLE_COUNT) row.classList.add("hidden");
+        for (let i = 0; i < info.attributes.length; i++) {
+          const attr = info.attributes[i];
+          if (Array.isArray(attr) && attr.length >= 2) {
+            const isHeader = attr[0]?.includes("<strong>");
+            if (isHeader) {
+              const dt = document.createElement("dt");
+              dt.className = "infobox-attr-header";
+              dt.innerHTML = attr[0];
+              if (i >= VISIBLE_COUNT) dt.classList.add("hidden");
+              dl.append(dt);
+            } else if (attr[1] !== null) {
+              const row = document.createElement("div");
+              row.className = "infobox-attr-row";
+              if (i >= VISIBLE_COUNT) row.classList.add("hidden");
 
-            const dt = document.createElement("dt");
-            dt.textContent = attr[0];
-            const dd = document.createElement("dd");
-            dd.innerHTML = attr[1];
-            row.append(dt, dd);
-            dl.append(row);
+              const dt = document.createElement("dt");
+              dt.textContent = attr[0];
+              const dd = document.createElement("dd");
+              dd.innerHTML = attr[1];
+              row.append(dt, dd);
+              dl.append(row);
+            }
           }
         }
-      }
-      attrsContainer.append(dl);
+        attrsContainer.append(dl);
 
-      if (hasHidden) {
-        const toggleBtn = document.createElement("button");
-        toggleBtn.className = "infobox-toggle";
-        toggleBtn.textContent = "show more";
-        toggleBtn.onclick = () => {
-          const isExpanded = attrsContainer.classList.toggle("expanded");
-          toggleBtn.textContent = isExpanded ? "show less" : "show more";
-        };
-        attrsContainer.append(toggleBtn);
+        if (hasHidden) {
+          const toggleBtn = document.createElement("button");
+          toggleBtn.className = "infobox-toggle";
+          toggleBtn.textContent = "show more";
+          toggleBtn.onclick = () => {
+            const isExpanded = attrsContainer.classList.toggle("expanded");
+            toggleBtn.textContent = isExpanded ? "show less" : "show more";
+          };
+          attrsContainer.append(toggleBtn);
+        }
+      }
+
+      if (profiles.length) {
+        const profilesSection = document.createElement("div");
+        profilesSection.className = "infobox-profiles";
+
+        for (const profile of profiles) {
+          const link = document.createElement("a");
+          link.className = "infobox-profile";
+          link.href = profile.url;
+          link.target = "_blank";
+          link.rel = "noopener";
+
+          if (profile.img) {
+            const img = document.createElement("img");
+            img.src = safeUrl(profile.img);
+            img.alt = profile.name || profile.long_name || "";
+            img.className = "infobox-profile-icon";
+            img.title = profile.name || profile.long_name || "";
+            img.loading = "lazy";
+            img.onerror = () => img.remove();
+            link.append(img);
+          }
+
+          profilesSection.append(link);
+        }
+        attrsContainer.append(profilesSection);
       }
 
       box.append(attrsContainer);
-    }
-
-    if (profiles.length) {
-      const profilesSection = document.createElement("div");
-      profilesSection.className = "infobox-profiles";
-
-      for (const profile of profiles) {
-        const link = document.createElement("a");
-        link.className = "infobox-profile";
-        link.href = profile.url;
-        link.target = "_blank";
-        link.rel = "noopener";
-
-        if (profile.img) {
-          const img = document.createElement("img");
-          img.src = safeUrl(profile.img);
-          img.alt = profile.name || profile.long_name || "";
-          img.className = "infobox-profile-icon";
-          img.title = profile.name || profile.long_name || "";
-          img.loading = "lazy";
-          img.onerror = () => img.remove();
-          link.append(img);
-        }
-
-        profilesSection.append(link);
-      }
-      box.append(profilesSection);
     }
 
     return box;

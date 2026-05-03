@@ -783,6 +783,11 @@ aside {
   }
 }
 
+.infobox-header-right.count-1 .infobox-img-wrap.narrow {
+  width: auto;
+  aspect-ratio: var(--aspect);
+}
+
 .infobox-header-right.count-2 .infobox-img-wrap {
   width: 110px;
   height: 110px;
@@ -1238,6 +1243,12 @@ aside {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--surface0);
+}
+
+.infobox-attrs-container > .infobox-profiles:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .infobox-profile {
