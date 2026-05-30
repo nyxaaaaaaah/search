@@ -952,7 +952,20 @@
               const dt = document.createElement("dt");
               dt.textContent = attr[0];
               const dd = document.createElement("dd");
-              dd.innerHTML = attr[1];
+              const val = String(attr[1]).trim();
+              if (/^https?:\/\/\S+$/.test(val)) {
+                const img = document.createElement("img");
+                img.src = safeUrl(val);
+                img.alt = attr[0] || "";
+                img.className = "infobox-attr-img";
+                img.loading = "lazy";
+                img.onerror = () => {
+                  dd.textContent = val;
+                };
+                dd.append(img);
+              } else {
+                dd.innerHTML = attr[1];
+              }
               row.append(dt, dd);
               dl.append(row);
             }
@@ -1050,6 +1063,40 @@
     };
   };
 
+  const COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>`;
+  const CHECK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>`;
+
+  const richCopyBtn = (getText, title = "copy") => {
+    const btn = document.createElement("button");
+    btn.className = "rich-copy-btn";
+    btn.title = title;
+    btn.innerHTML = COPY_SVG;
+    btn.onclick = () => {
+      navigator.clipboard?.writeText(getText());
+      btn.innerHTML = CHECK_SVG;
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.innerHTML = COPY_SVG;
+        btn.classList.remove("copied");
+      }, 1400);
+    };
+    return btn;
+  };
+
+  const weatherIcon = (main) => {
+    const m = (main || "").toLowerCase();
+    if (m.includes("thunder")) return "⛈️";
+    if (m.includes("drizzle")) return "🌦️";
+    if (m.includes("rain")) return "🌧️";
+    if (m.includes("snow") || m.includes("sleet")) return "🌨️";
+    if (m.includes("clear") || m.includes("sun")) return "☀️";
+    if (m.includes("cloud")) return "☁️";
+    if (m.includes("mist") || m.includes("fog") || m.includes("haze") || m.includes("smoke"))
+      return "🌫️";
+    if (m.includes("wind")) return "💨";
+    return "🌡️";
+  };
+
   const renderRichResults = (rich) => {
     if (!rich?.length) return null;
     const frag = document.createDocumentFragment();
@@ -1066,7 +1113,7 @@
         const answer = document.createElement("div");
         answer.className = "rich-calc-answer";
         answer.textContent = `= ${item.calculator.answer}`;
-        section.append(expr, answer);
+        section.append(expr, answer, richCopyBtn(() => String(item.calculator.answer), "copy answer"));
         frag.append(section);
       } else if (item.subtype === "colorpicker" && item.colorpicker) {
         section.classList.add("rich-colorpicker");
@@ -1148,20 +1195,47 @@
         header.append(location);
 
         if (w.current_weather) {
+          const cw = w.current_weather;
           const current = document.createElement("div");
           current.className = "rich-weather-current";
+
+          const icon = document.createElement("span");
+          icon.className = "rich-weather-icon";
+          icon.textContent = weatherIcon(cw.weather?.main || cw.weather?.description);
+
           const temp = document.createElement("span");
           temp.className = "rich-weather-temp";
-          temp.textContent = `${Math.round(w.current_weather.temp)}°`;
+          temp.textContent = `${Math.round(cw.temp)}°`;
+
+          const info = document.createElement("div");
+          info.className = "rich-weather-info";
           const desc = document.createElement("span");
           desc.className = "rich-weather-desc";
-          desc.textContent =
-            w.current_weather.weather?.description || w.current_weather.weather?.main || "";
+          desc.textContent = cw.weather?.description || cw.weather?.main || "";
           const feels = document.createElement("span");
           feels.className = "rich-weather-feels";
-          feels.textContent = `Feels like ${Math.round(w.current_weather.feels_like)}°`;
-          current.append(temp, desc, feels);
+          feels.textContent = `feels like ${Math.round(cw.feels_like)}°`;
+          info.append(desc, feels);
+
+          current.append(icon, temp, info);
           header.append(current);
+
+          const metrics = [];
+          if (cw.humidity != null) metrics.push(["humidity", `${Math.round(cw.humidity)}%`]);
+          if (cw.wind_speed != null) metrics.push(["wind", `${Math.round(cw.wind_speed)} m/s`]);
+          if (cw.uvi != null) metrics.push(["uv index", Math.round(cw.uvi)]);
+          if (cw.pressure != null) metrics.push(["pressure", `${Math.round(cw.pressure)} hPa`]);
+          if (metrics.length) {
+            const stats = document.createElement("div");
+            stats.className = "rich-weather-metrics";
+            for (const [label, value] of metrics) {
+              const metric = document.createElement("div");
+              metric.className = "rich-weather-metric";
+              metric.innerHTML = `<span class="rich-weather-metric-val">${value}</span><span class="rich-weather-metric-label">${label}</span>`;
+              stats.append(metric);
+            }
+            header.append(stats);
+          }
         }
         section.append(header);
 
@@ -1174,21 +1248,25 @@
             const dayName = document.createElement("span");
             dayName.className = "rich-weather-dayname";
             const d = new Date(day.ts * 1000);
-            dayName.textContent = d.toLocaleDateString("en", {
-              weekday: "short",
-            });
+            const isToday = d.toDateString() === new Date().toDateString();
+            dayName.textContent = isToday
+              ? "today"
+              : d.toLocaleDateString("en", { weekday: "short" });
+            const dayIcon = document.createElement("span");
+            dayIcon.className = "rich-weather-dayicon";
+            dayIcon.textContent = weatherIcon(day.weather?.main);
             const dayTemp = document.createElement("span");
             dayTemp.className = "rich-weather-daytemp";
             const high = day.temperature?.max ?? day.temperature?.day ?? "";
             const low = day.temperature?.min ?? "";
-            dayTemp.textContent =
+            dayTemp.innerHTML =
               high && low
-                ? `${Math.round(high)}° / ${Math.round(low)}°`
-                : `${Math.round(high || low)}°`;
+                ? `<b>${Math.round(high)}°</b> ${Math.round(low)}°`
+                : `<b>${Math.round(high || low)}°</b>`;
             const dayDesc = document.createElement("span");
             dayDesc.className = "rich-weather-daydesc";
             dayDesc.textContent = day.weather?.main || "";
-            dayEl.append(dayName, dayTemp, dayDesc);
+            dayEl.append(dayName, dayIcon, dayTemp, dayDesc);
             forecast.append(dayEl);
           }
           section.append(forecast);
@@ -1457,7 +1535,7 @@
         result.className = "rich-conversion-result";
         result.innerHTML = `<span class="rich-conversion-from">${u.amount} ${fromDisplay}</span> = <span class="rich-conversion-to">${converted} ${toDisplay}</span>`;
 
-        section.append(result);
+        section.append(result, richCopyBtn(() => String(converted), "copy result"));
         frag.append(section);
       } else if (item.subtype === "timezones" && item.timezones?.timezones?.length) {
         section.classList.add("rich-timezones");
@@ -1649,18 +1727,22 @@
 
         const label = document.createElement("div");
         label.className = "rich-timestamp-label";
-        label.textContent = "Current Unix Timestamp";
+        label.textContent = "current unix timestamp";
 
+        let current = Math.floor(Date.now() / 1000);
         const update = () => {
-          const now = Math.floor(Date.now() / 1000);
-          display.textContent = now.toString();
+          current = Math.floor(Date.now() / 1000);
+          display.textContent = current.toString();
           readable.textContent = new Date().toLocaleString();
         };
 
         update();
-        setInterval(update, 1000);
+        const tsInterval = setInterval(() => {
+          if (!section.isConnected) return clearInterval(tsInterval);
+          update();
+        }, 1000);
 
-        section.append(display, label, readable);
+        section.append(display, richCopyBtn(() => String(current), "copy timestamp"), label, readable);
         frag.append(section);
       } else if (item.subtype === "currency" && item.currency) {
         section.classList.add("rich-currency");
@@ -1700,6 +1782,14 @@
         } else {
           section.append(result);
         }
+
+        if (converted != null)
+          section.append(
+            richCopyBtn(
+              () => converted.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+              "copy result",
+            ),
+          );
 
         frag.append(section);
       } else if (item.subtype === "stopwatch" || item.stopwatch) {
@@ -2208,6 +2298,13 @@
     document.getElementById("results-all").append(renderAllTab());
     document.getElementById("sidebar").append(renderSidebar());
     showGeniusInstantAnswer();
+
+    import("/s/widgets.js")
+      .then(({ renderLocalWidgets }) => {
+        const widget = renderLocalWidgets(currentQuery);
+        if (widget) document.getElementById("results-all").prepend(widget);
+      })
+      .catch(() => {});
   }
 
   let pk = "__results_pk__";
@@ -2288,7 +2385,15 @@
 
   document.addEventListener("keydown", (event) => {
     const input = document.querySelector(".search-bar input");
-    if (document.activeElement === input) return;
+    const ae = document.activeElement;
+    if (
+      ae &&
+      (ae.tagName === "INPUT" ||
+        ae.tagName === "TEXTAREA" ||
+        ae.tagName === "SELECT" ||
+        ae.isContentEditable)
+    )
+      return;
 
     if (event.key === "/") {
       input.focus();

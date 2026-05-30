@@ -20,6 +20,31 @@ const sign = async (payload, expiry) => {
     .sign(getSecret());
 };
 
+const checkApiAuth = async (headers) => {
+  if (!env.DB)
+    return { status: 503, error: "api is not enabled on this instance" };
+
+  const match = /^Bearer\s+(.+)$/i.exec(headers.authorization || "");
+  if (!match)
+    return {
+      status: 401,
+      error:
+        "missing or malformed Authorization header (expected: Bearer <key>)",
+    };
+
+  let row;
+  try {
+    row = await env.DB.prepare("SELECT key FROM api_keys WHERE key = ?")
+      .bind(match[1].trim())
+      .first();
+  } catch {
+    return { status: 503, error: "api is not enabled on this instance" };
+  }
+
+  if (!row) return { status: 401, error: "invalid api key" };
+  return null;
+};
+
 export default new Elysia({ adapter: CloudflareAdapter })
   .get("/about", async () => {
     const resp = await env.ASSETS.fetch(
@@ -32,6 +57,83 @@ export default new Elysia({ adapter: CloudflareAdapter })
       new Request("https://assets/bangs.html"),
     );
     return new Response(resp.body, resp);
+  })
+  .get("/api", async () => {
+    const resp = await env.ASSETS.fetch(new Request("https://assets/api.html"));
+    return new Response(resp.body, resp);
+  })
+  .options("/api", ({ set }) => {
+    set.status = 204;
+    set.headers["access-control-allow-origin"] = "*";
+    set.headers["access-control-allow-methods"] = "POST, OPTIONS";
+    set.headers["access-control-allow-headers"] = "authorization, content-type";
+    set.headers["access-control-max-age"] = "86400";
+    return null;
+  })
+  .post("/api", async ({ body, headers, set }) => {
+    set.headers["content-type"] = "application/json";
+    set.headers["access-control-allow-origin"] = "*";
+    set.headers["cache-control"] = "no-store";
+
+    const authError = await checkApiAuth(headers);
+    if (authError) {
+      set.status = authError.status;
+      if (authError.status === 401) set.headers["www-authenticate"] = "Bearer";
+      return { error: authError.error };
+    }
+
+    let payload = body;
+    if (typeof payload === "string") {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        set.status = 400;
+        return { error: "request body must be valid JSON" };
+      }
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      set.status = 400;
+      return { error: "request body must be a JSON object" };
+    }
+
+    const query =
+      typeof payload.query === "string"
+        ? payload.query.replaceAll("\n", " ").trim()
+        : "";
+    if (!query) {
+      set.status = 400;
+      return { error: "missing required field: query" };
+    }
+
+    const type = (payload.type || "web").toString().toLowerCase();
+    const allowed = ["web", "images", "news"];
+    if (!allowed.includes(type)) {
+      set.status = 400;
+      return {
+        error: `invalid type "${type}" (allowed: ${allowed.join(", ")})`,
+      };
+    }
+
+    const page = Math.floor(Number(payload.page ?? 0));
+    if (!Number.isFinite(page) || page < 0) {
+      set.status = 400;
+      return { error: "page must be a non-negative integer" };
+    }
+
+    let data;
+    try {
+      data =
+        type === "images"
+          ? await searchImages(query, page)
+          : type === "news"
+            ? await searchNews(query, page)
+            : await searchMixed(query, page);
+    } catch (e) {
+      set.status = 502;
+      return { error: "search failed", detail: String(e?.message || e) };
+    }
+
+    return { query, type, page, ...data };
   })
   .get("/", async ({ query, set, redirect, request }) => {
     const q = query?.q?.replaceAll?.("\n", " ")?.trim();
@@ -185,14 +287,17 @@ export default new Elysia({ adapter: CloudflareAdapter })
             state.sections[state.idx] += "\n";
         },
       })
-      .on('[data-lyrics-container="true"] [data-exclude-from-selection="true"]', {
-        element(el) {
-          state.skipDepth++;
-          el.onEndTag(() => {
-            state.skipDepth--;
-          });
+      .on(
+        '[data-lyrics-container="true"] [data-exclude-from-selection="true"]',
+        {
+          element(el) {
+            state.skipDepth++;
+            el.onEndTag(() => {
+              state.skipDepth--;
+            });
+          },
         },
-      });
+      );
 
     await rewriter.transform(resp).text();
 
@@ -455,9 +560,7 @@ export default new Elysia({ adapter: CloudflareAdapter })
     return new Response(resp.body, resp);
   })
   .all("/*", async () => {
-    const resp = await env.ASSETS.fetch(
-      new Request("https://assets/404.html"),
-    );
+    const resp = await env.ASSETS.fetch(new Request("https://assets/404.html"));
     return new Response(resp.body, resp);
   })
   .compile();

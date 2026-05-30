@@ -38,7 +38,7 @@ export default async function searchImages(query, page = 0) {
   const raw = await resp.text();
 
   const script =
-    `[{i:${raw.split(`<script nonce="`)[1].split(`[{type:"data",data:`).slice(1).join(`[{type:"data",data:`).split("</script>")[0]}`
+    `[{i:${raw.split(`[{type:"data",data:`).slice(1).join(`[{type:"data",data:`).split("</script>")[0]}`
       .split("\n")[0]
       .trim()
       .replace(/,$/, "");
