@@ -293,6 +293,48 @@ export default new Elysia({ adapter: CloudflareAdapter })
       },
     });
   })
+  .get("/fx/:base", async ({ set, params }) => {
+    const base = (params.base || "").toUpperCase();
+    if (!/^[A-Z]{3}$/.test(base)) {
+      set.status = 400;
+      return { error: "invalid base currency" };
+    }
+
+    let resp;
+    try {
+      resp = await fetch(`https://open.er-api.com/v6/latest/${base}`, {
+        cf: { cacheTtl: 3600, cacheEverything: true },
+      });
+    } catch {
+      set.status = 502;
+      return { error: "fx fetch failed" };
+    }
+
+    if (!resp.ok) {
+      set.status = 502;
+      return { error: "fx upstream error" };
+    }
+
+    const data = await resp.json();
+    if (data.result !== "success" || !data.rates) {
+      set.status = 502;
+      return { error: "fx unavailable" };
+    }
+
+    return new Response(
+      JSON.stringify({
+        base: data.base_code,
+        rates: data.rates,
+        updated: data.time_last_update_unix,
+      }),
+      {
+        headers: {
+          "content-type": "application/json",
+          "cache-control": "public, max-age=3600",
+        },
+      },
+    );
+  })
   .get("/s/flags/:file", async ({ set, params }) => {
     if (!/^[a-z-]{2,8}\.svg$/.test(params.file)) {
       set.status = 404;

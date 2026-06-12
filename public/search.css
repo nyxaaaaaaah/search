@@ -3367,6 +3367,60 @@ body.images-detail-sidebar-open .images-body {
   font-variant-numeric: tabular-nums;
 }
 
+.w-cur-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.w-cur-amt {
+  flex: 1 1 110px;
+  min-width: 90px;
+  font-variant-numeric: tabular-nums;
+}
+.w-cur-sel {
+  flex: 1 1 130px;
+  min-width: 110px;
+}
+.w-cur-swap {
+  background: var(--surface0);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--subtext);
+  cursor: pointer;
+  padding: 8px;
+  display: inline-flex;
+  flex-shrink: 0;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.1s;
+}
+.w-cur-swap:hover {
+  background: var(--surface1);
+  color: var(--text);
+}
+.w-cur-swap:active {
+  transform: rotate(180deg);
+}
+.w-cur-out-row {
+  align-items: center;
+}
+.w-cur-result {
+  flex: 1;
+}
+.w-cur-out {
+  color: var(--green);
+}
+.w-cur-rate {
+  font-variant-numeric: tabular-nums;
+}
+.w-cur-stamp {
+  font-size: 0.78rem;
+  color: var(--subtext);
+  opacity: 0.7;
+}
+
 /* qr */
 .w-qr-wrap {
   display: flex;

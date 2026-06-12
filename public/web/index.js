@@ -1744,54 +1744,6 @@
 
         section.append(display, richCopyBtn(() => String(current), "copy timestamp"), label, readable);
         frag.append(section);
-      } else if (item.subtype === "currency" && item.currency) {
-        section.classList.add("rich-currency");
-        const c = item.currency;
-
-        const fromCode = c.from_currency_code || "";
-        const toCode = c.to_currency_code || "";
-        const amount = c.amount ?? 1;
-        const converted = c.converted_amount;
-        const rate = c.exchange_rate;
-
-        const result = document.createElement("div");
-        result.className = "rich-currency-result";
-
-        const fromEl = document.createElement("span");
-        fromEl.className = "rich-currency-from";
-        fromEl.textContent = `${amount.toLocaleString()} ${fromCode}`;
-
-        const equals = document.createElement("span");
-        equals.className = "rich-currency-equals";
-        equals.textContent = " = ";
-
-        const toEl = document.createElement("span");
-        toEl.className = "rich-currency-to";
-        toEl.textContent =
-          converted != null
-            ? `${converted.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${toCode}`
-            : "—";
-
-        result.append(fromEl, equals, toEl);
-
-        if (rate != null) {
-          const rateEl = document.createElement("div");
-          rateEl.className = "rich-currency-rate";
-          rateEl.textContent = `1 ${fromCode} = ${rate.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${toCode}`;
-          section.append(result, rateEl);
-        } else {
-          section.append(result);
-        }
-
-        if (converted != null)
-          section.append(
-            richCopyBtn(
-              () => converted.toLocaleString(undefined, { maximumFractionDigits: 2 }),
-              "copy result",
-            ),
-          );
-
-        frag.append(section);
       } else if (item.subtype === "stopwatch" || item.stopwatch) {
         section.classList.add("rich-stopwatch");
         let elapsed = 0;

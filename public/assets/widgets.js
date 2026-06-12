@@ -1,4 +1,9 @@
 import {
+  currencyLabel,
+  parseCurrencyQuery,
+  sortCodes,
+} from "./currency.js";
+import {
   browserTargetLang,
   codeForName,
   langByCode,
@@ -4867,6 +4872,119 @@ const parseTranslateQuery = (q) => {
 };
 
 const CLEAR = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+
+reg({
+  id: "currency",
+  match: parseCurrencyQuery,
+  build: ({ amount, from, to }) => {
+    const fmtNum = (n, dp) =>
+      new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: dp,
+        maximumFractionDigits: dp,
+      }).format(n);
+    const fmtAmt = (n) => {
+      const abs = Math.abs(n);
+      const dp = abs >= 1 || n === 0 ? 2 : abs >= 0.01 ? 4 : 6;
+      return fmtNum(n, dp);
+    };
+    const fmtRate = (n) =>
+      new Intl.NumberFormat(undefined, {
+        maximumFractionDigits: n >= 1 ? 4 : 6,
+      }).format(n);
+
+    const amt = h("input", {
+      class: "w-input w-cur-amt",
+      type: "text",
+      inputmode: "decimal",
+      value: String(amount),
+    });
+    const fromSel = h("select", { class: "w-select w-cur-sel" });
+    const toSel = h("select", { class: "w-select w-cur-sel" });
+    const swap = h("button", {
+      class: "w-cur-swap",
+      title: "swap currencies",
+      "aria-label": "swap currencies",
+      html: SWAP,
+    });
+    const result = h("div", { class: "w-big w-cur-result" }, "loading rates…");
+    const rateLine = h("div", { class: "w-sub w-cur-rate" });
+    const stamp = h("div", { class: "w-cur-stamp" });
+
+    let rates = null;
+    let lastValue = 0;
+    const recompute = () => {
+      if (!rates) return;
+      const a = parseFloat(amt.value.replace(/,/g, ""));
+      const f = fromSel.value;
+      const tt = toSel.value;
+      if (!Number.isFinite(a) || !rates[f] || !rates[tt]) {
+        result.textContent = "—";
+        rateLine.textContent = "";
+        lastValue = 0;
+        return;
+      }
+      const rate = rates[tt] / rates[f];
+      lastValue = a * rate;
+      result.replaceChildren(
+        h("span", { class: "w-cur-out" }, `${fmtAmt(lastValue)} ${tt}`),
+      );
+      rateLine.textContent = `${fmtAmt(a)} ${f} · 1 ${f} = ${fmtRate(rate)} ${tt}`;
+    };
+
+    amt.oninput = recompute;
+    fromSel.onchange = toSel.onchange = recompute;
+    swap.onclick = () => {
+      const f = fromSel.value;
+      fromSel.value = toSel.value;
+      toSel.value = f;
+      recompute();
+    };
+
+    fetch("/fx/USD")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        rates = data.rates || {};
+        const codes = sortCodes(Object.keys(rates));
+        const opts = (sel, val) => {
+          sel.replaceChildren(
+            ...codes.map((c) =>
+              h("option", { value: c, selected: c === val ? "" : null }, currencyLabel(c)),
+            ),
+          );
+          if (rates[val]) sel.value = val;
+        };
+        opts(fromSel, rates[from] ? from : "USD");
+        opts(toSel, rates[to] ? to : "EUR");
+        if (data.updated)
+          stamp.textContent = `rates updated ${new Date(data.updated * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`;
+        recompute();
+      })
+      .catch(() => {
+        result.textContent = "couldn't load exchange rates";
+      });
+
+    return card(
+      "currency converter",
+      "live mid-market rates",
+      h(
+        "div",
+        { class: "w-cur-row" },
+        amt,
+        fromSel,
+        swap,
+        toSel,
+      ),
+      h(
+        "div",
+        { class: "w-out-row w-cur-out-row" },
+        result,
+        copyBtn(() => (lastValue ? String(+lastValue.toFixed(6)) : ""), "copy result"),
+      ),
+      rateLine,
+      stamp,
+    );
+  },
+});
 
 reg({
   id: "translate",

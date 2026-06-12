@@ -80,6 +80,12 @@ const QUERIES = [
   "sleep calculator",
   "translate good morning to japanese",
   "hello in french",
+  "4.49 aud to usd",
+  "4.49 aud tou sd",
+  "100 usd in eur",
+  "50 euros to pounds",
+  "$20 to jpy",
+  "250 thb to inr",
 ];
 
 const page = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -174,6 +180,12 @@ Bun.serve({
       return new Response(await searchPage(), { headers: { "content-type": "text/html" } });
     if (pathname === "/page-js")
       return new Response(await searchJs(), { headers: { "content-type": "application/javascript" } });
+    if (pathname.startsWith("/fx/")) {
+      const base = pathname.slice(4).toUpperCase();
+      const up = await fetch(`https://open.er-api.com/v6/latest/${base}`);
+      const data = await up.json();
+      return Response.json({ base: data.base_code, rates: data.rates, updated: data.time_last_update_unix });
+    }
     let path = null;
     if (pathname.startsWith("/s/")) path = ROOT + "assets/" + pathname.slice(3);
     else if (pathname === "/search.css") path = ROOT + "search.css";
