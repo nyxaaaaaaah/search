@@ -43,15 +43,14 @@ export default async function searchImages(query, page = 0) {
       .trim()
       .replace(/,$/, "");
 
-  const exprAst = parseExpressionAt(script, 0, { ecmaVersion: 2020 });
-
   try {
+    const exprAst = parseExpressionAt(script, 0, { ecmaVersion: 2020 });
     const simplified = simplify(exprAst.elements[1]).data;
     const imageResults = simplified.body?.response?.results || [];
 
     return {
       more_results_available:
-        simplified.body?.response?.query?.more_results_available,
+        simplified.body?.response?.query?.more_results_available ?? false,
       results: imageResults.map((r) => ({
         title: r.title,
         url: r.url,

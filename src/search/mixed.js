@@ -45,9 +45,8 @@ export default async function search(query, page = 0) {
       .trim()
       .replace(/,$/, "");
 
-  const exprAst = parseExpressionAt(script, 0, { ecmaVersion: 2020 });
-
   try {
+    const exprAst = parseExpressionAt(script, 0, { ecmaVersion: 2020 });
     const simplified = simplify(exprAst.elements[1]).data;
 
     return {
