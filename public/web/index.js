@@ -111,8 +111,18 @@
       im.src = pick.src;
     });
 
-  const renderInfoboxImagesAsync = async (rawImages, box, header) => {
-    const picks = pickInfoboxImages(rawImages);
+  const renderInfoboxImagesAsync = async (rawImages, box, header, linkUrl) => {
+    let picks = pickInfoboxImages(rawImages);
+
+    const onlyLogos = picks.length > 0 && picks.every((p) => p.contain);
+    if (!picks.length || onlyLogos) {
+      const heroSrc = data.results?.web?.results?.[0]?.thumbnail?.src;
+      const safe = heroSrc ? safeUrl(heroSrc) : "#";
+      if (safe !== "#") {
+        const hero = await analyzeImage({ src: safe, contain: false });
+        if (!hero.broken && !hero.hasWhiteBg) picks = [{ src: safe, contain: false }];
+      }
+    }
     if (!picks.length) return;
 
     const analyzed = await Promise.all(picks.map(analyzeImage));
@@ -132,8 +142,14 @@
       ? "infobox-gallery"
       : `infobox-header-right count-${display.length}`;
 
+    const wrapUrl = linkUrl ? safeUrl(linkUrl) : "#";
     for (const a of display) {
-      const wrap = document.createElement("div");
+      const wrap = document.createElement(wrapUrl !== "#" ? "a" : "div");
+      if (wrapUrl !== "#") {
+        wrap.href = wrapUrl;
+        wrap.target = "_blank";
+        wrap.rel = "noopener";
+      }
       wrap.className = useGallery ? "infobox-gallery-item" : "infobox-img-wrap";
       if (a.needsBackdrop) wrap.classList.add("needs-backdrop");
 
@@ -272,10 +288,16 @@
 
     if (favicon) {
       const faviconImg = document.createElement("img");
-      faviconImg.src = `https://external-content.duckduckgo.com/ip3/${urlSource}.ico`;
+      faviconImg.src = safeUrl(favicon);
       faviconImg.className = "favicon";
       faviconImg.alt = "";
       faviconImg.loading = "lazy";
+      faviconImg.onerror = () => {
+        const base = urlSource.split(".").slice(-2).join(".");
+        const ddg = `https://external-content.duckduckgo.com/ip3/${base}.ico`;
+        if (base && faviconImg.src !== ddg) faviconImg.src = ddg;
+        else faviconImg.remove();
+      };
       source.append(faviconImg);
     }
 
@@ -353,23 +375,18 @@
     article.className = "result web-result";
     article.append(content);
 
-    const showThumbFor = [
-      "youtube.com",
-      "amazon.com",
-      "amazon.co.uk",
-      "amazon.ca",
-      "amazon.in",
-      "aliexpress.com",
-      "wikipedia.org",
-    ];
-    if (thumb && showThumbFor.some((d) => urlSource.endsWith(d))) {
+    if (thumb && (!hasHadWebResult || urlSource.endsWith("wikipedia.org"))) {
+      const thumbLink = document.createElement("a");
+      thumbLink.href = url;
+      thumbLink.className = "result-thumb-link";
       const thumbImg = document.createElement("img");
       thumbImg.src = thumb;
       thumbImg.className = "result-thumb";
       thumbImg.alt = "";
       thumbImg.loading = "lazy";
-      thumbImg.onerror = () => thumbImg.remove();
-      article.append(thumbImg);
+      thumbImg.onerror = () => thumbLink.remove();
+      thumbLink.append(thumbImg);
+      article.append(thumbLink);
     }
 
     if (!hasHadWebResult) {
@@ -519,7 +536,8 @@
 
   const renderNewsResult = (r) => {
     const favicon = r.meta_url?.favicon || r.profile?.img || "";
-    const siteName = r.profile?.name || r.meta_url?.hostname || "";
+    const siteName =
+      r.profile?.name || r.meta_url?.hostname?.replace(/^www\./, "") || "";
     const title = r.title || "";
     const age = r.age || "";
     const url = safeUrl(r.url);
@@ -657,7 +675,11 @@
   };
 
   const renderDiscussionResult = (r) => {
-    const forumName = r.data?.forum_name || "";
+    let host = "";
+    try {
+      host = new URL(r.url).hostname.replace(/^www\./, "");
+    } catch {}
+    const forumName = r.data?.forum_name || host || "";
     const title = r.title || "";
     const url = safeUrl(r.url);
     const votes = r.data?.num_votes || 0;
@@ -668,6 +690,16 @@
 
     const source = document.createElement("div");
     source.className = "result-source";
+
+    if (host) {
+      const fav = document.createElement("img");
+      fav.className = "favicon";
+      fav.alt = "";
+      fav.loading = "lazy";
+      fav.onerror = () => fav.remove();
+      fav.src = `https://external-content.duckduckgo.com/ip3/${host}.ico`;
+      source.append(fav);
+    }
 
     const forumSpan = document.createElement("span");
     forumSpan.className = "forum-name";
@@ -690,19 +722,25 @@
     content.className = "result-content";
     content.append(source, titleEl);
 
-    if (question) {
-      const questionEl = document.createElement("p");
-      questionEl.className = "result-desc";
-      questionEl.innerHTML = question;
-      content.append(questionEl);
-    }
+    const thread = document.createElement("div");
+    thread.className = "discussion-thread";
+    const addThreadNode = (text, { muted, html, label }) => {
+      const node = document.createElement("div");
+      node.className = `thread-node${muted ? " muted" : ""}`;
+      const tag = document.createElement("span");
+      tag.className = "thread-label";
+      tag.textContent = label;
+      const p = document.createElement("p");
+      if (html) p.innerHTML = text;
+      else p.textContent = text;
+      node.append(tag, p);
+      thread.append(node);
+    };
 
-    if (topComment) {
-      const commentEl = document.createElement("div");
-      commentEl.className = "top-comment";
-      commentEl.textContent = topComment;
-      content.append(commentEl);
-    }
+    if (question) addThreadNode(question, { html: true, label: "post" });
+    if (topComment)
+      addThreadNode(topComment, { muted: true, label: "top reply" });
+    if (thread.children.length) content.append(thread);
 
     const stats = document.createElement("div");
     stats.className = "discussion-stats";
@@ -839,7 +877,7 @@
 
     header.append(headerLeft);
 
-    renderInfoboxImagesAsync(info.images, box, header);
+    renderInfoboxImagesAsync(info.images, box, header, info.url);
 
     box.append(header);
 
@@ -2120,6 +2158,36 @@
     const frag = document.createDocumentFragment();
     let discussionsRendered = false;
     let faqRendered = false;
+    let webRendered = 0;
+    let pendingDiscussions = null;
+    const MIN_WEB_BEFORE_DISCUSSIONS = 4;
+
+    const buildDiscussions = () => {
+      const section = document.createElement("section");
+      section.className = "discussions-section";
+      const h3 = document.createElement("h3");
+      h3.textContent = "discussions";
+      section.append(h3);
+
+      const items = results.discussions.results.slice(0, 4);
+      const list = document.createElement("div");
+      list.className = "discussions-list";
+      for (const d of items) list.append(renderDiscussionResult(d));
+      section.append(list);
+
+      if (items.length > 1) {
+        list.classList.add("collapsed");
+        const toggle = document.createElement("button");
+        toggle.className = "discussions-toggle";
+        toggle.textContent = `show ${items.length - 1} more`;
+        toggle.onclick = () => {
+          list.classList.remove("collapsed");
+          toggle.remove();
+        };
+        section.append(toggle);
+      }
+      return section;
+    };
 
     const richSection = renderRichResults(results.rich);
     if (richSection) frag.append(richSection);
@@ -2131,6 +2199,12 @@
 
         if (type === "web" && results.web?.results?.[idx]) {
           frag.append(renderWebResult(results.web.results[idx]));
+          webRendered++;
+          if (pendingDiscussions && webRendered >= MIN_WEB_BEFORE_DISCUSSIONS) {
+            frag.append(pendingDiscussions);
+            pendingDiscussions = null;
+            discussionsRendered = true;
+          }
         } else if (type === "news" && results.news?.results) {
           const section = document.createElement("section");
           section.className = "news-section";
@@ -2151,19 +2225,22 @@
         } else if (
           type === "discussions" &&
           results.discussions?.results?.length &&
-          !discussionsRendered
+          !discussionsRendered &&
+          !pendingDiscussions
         ) {
-          discussionsRendered = true;
-          const section = document.createElement("section");
-          section.className = "discussions-section";
-          const h3 = document.createElement("h3");
-          h3.textContent = "discussions";
-          section.append(h3);
-          results.discussions.results.slice(0, 3).forEach((d) => {
-            section.append(renderDiscussionResult(d));
-          });
-          frag.append(section);
+          const section = buildDiscussions();
+          if (webRendered >= MIN_WEB_BEFORE_DISCUSSIONS) {
+            frag.append(section);
+            discussionsRendered = true;
+          } else {
+            pendingDiscussions = section;
+          }
         }
+      }
+      if (pendingDiscussions && !discussionsRendered) {
+        frag.append(pendingDiscussions);
+        discussionsRendered = true;
+        pendingDiscussions = null;
       }
     } else {
       if (results.web?.results) {
@@ -2193,15 +2270,8 @@
     }
 
     if (!discussionsRendered && results.discussions?.results?.length) {
-      const section = document.createElement("section");
-      section.className = "discussions-section";
-      const h3 = document.createElement("h3");
-      h3.textContent = "Discussions";
-      section.append(h3);
-      results.discussions.results.slice(0, 3).forEach((d) => {
-        section.append(renderDiscussionResult(d));
-      });
-      frag.append(section);
+      frag.append(buildDiscussions());
+      discussionsRendered = true;
     }
 
     const placeholders = [
