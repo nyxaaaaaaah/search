@@ -916,6 +916,13 @@ a.infobox-gallery-item:hover .infobox-img {
   color: var(--text);
   line-height: 1.3;
 }
+.infobox-title a {
+  color: inherit;
+  text-decoration: none;
+}
+.infobox-title a:hover {
+  text-decoration: underline;
+}
 
 .infobox-desc {
   font-size: 0.85rem;
@@ -936,17 +943,6 @@ a.infobox-gallery-item:hover .infobox-img {
   color: #bac2de;
   line-height: 1.5;
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.infobox-learnmore {
-  color: var(--blue);
-  font-size: 0.9rem;
-  margin-top: 4px;
-  display: block;
 }
 
 .infobox-question {
@@ -2208,21 +2204,18 @@ a.infobox-gallery-item:hover .infobox-img {
   margin: 2px 0 0;
   font-size: 0.9rem;
   line-height: 1.5;
-  color: var(--subtext);
   max-height: 4.5em;
   overflow: hidden;
+  color: var(--muted);
 }
 .thread-node.muted p {
-  color: var(--muted);
+  color: var(--subtext);
 }
 .thread-label {
   display: block;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: 500;
   color: var(--subtext);
-  opacity: 0.6;
+  font-size: 14px;
 }
 
 .discussion-stats {
@@ -3853,7 +3846,9 @@ body.images-detail-sidebar-open .images-body {
   font-size: 1.05rem;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.1s, transform 0.05s;
+  transition:
+    background 0.1s,
+    transform 0.05s;
   -webkit-tap-highlight-color: transparent;
 }
 .w-calc2-key:hover {

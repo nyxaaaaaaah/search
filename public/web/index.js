@@ -126,7 +126,9 @@
     if (!picks.length) return;
 
     const analyzed = await Promise.all(picks.map(analyzeImage));
-    const valid = analyzed.filter((a) => !a.broken);
+    const valid = analyzed.filter(
+      (a) => !a.broken && Math.min(a.naturalW, a.naturalH) >= 48,
+    );
     if (!valid.length) return;
 
     const noWhiteBg = valid.filter((a) => !a.hasWhiteBg);
@@ -135,7 +137,10 @@
 
     const allLogos = final.every((a) => a.contain);
     const useGallery = !allLogos && final.length >= 3;
-    const display = useGallery ? final.slice(0, 5) : final.slice(0, 2);
+    const ranked = [...final].sort(
+      (a, b) => b.naturalW * b.naturalH - a.naturalW * a.naturalH,
+    );
+    const display = useGallery ? ranked.slice(0, 5) : ranked.slice(0, 1);
 
     const container = document.createElement("div");
     container.className = useGallery
@@ -841,7 +846,14 @@
 
     const titleEl = document.createElement("h2");
     titleEl.className = "infobox-title";
-    titleEl.innerHTML = info.title.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    const titleLink = document.createElement("a");
+    titleLink.href = safeUrl(info.url);
+    titleLink.target = "_blank";
+    titleLink.rel = "noopener";
+    titleLink.innerHTML = info.title
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+    titleEl.append(titleLink);
     headerLeft.append(titleEl);
 
     if (desc) {
@@ -861,19 +873,21 @@
     }
 
     if (longDesc) {
+      let txt = longDesc.trim();
+      const MAX = 280;
+      if (txt.length > MAX) {
+        const slice = txt.slice(0, MAX);
+        const m = slice.match(/^[\s\S]*[.!?](?=\s|$)/);
+        txt =
+          m && m[0].length >= MAX * 0.5
+            ? m[0].trim()
+            : `${slice.slice(0, slice.lastIndexOf(" ")).trim()}…`;
+      }
       const longDescEl = document.createElement("p");
       longDescEl.className = "infobox-long-desc";
-      longDescEl.textContent = longDesc;
+      longDescEl.textContent = txt;
       headerLeft.append(longDescEl);
     }
-
-    const moreLink = document.createElement("a");
-    moreLink.href = info.url;
-    moreLink.target = "_blank";
-    moreLink.rel = "noopener";
-    moreLink.textContent = new URL(info.url).hostname;
-    moreLink.className = "infobox-learnmore";
-    headerLeft.append(moreLink);
 
     header.append(headerLeft);
 
