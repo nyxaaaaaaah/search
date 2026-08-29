@@ -2470,7 +2470,8 @@
   const data = __results_template__;
   let hasMoreResults = data.more_results_available !== false;
 
-  {
+  const kagiEnabled = __kagi_enabled__;
+  if (kagiEnabled) {
     const optionsBtn = document.querySelector("#options-btn");
     const optionsPopup = document.querySelector("#options-popup");
     const engineSelect = document.querySelector("#engine-select");
@@ -2510,6 +2511,9 @@
         optionsPopup.classList.remove("visible");
       }
     });
+  } else {
+    document.querySelector("#options-btn")?.remove();
+    document.querySelector("#options-popup")?.remove();
   }
 
   if (data.captchaHtml) {

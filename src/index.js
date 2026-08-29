@@ -28,10 +28,16 @@ const CACHE = {
 
 const getSecret = () => new TextEncoder().encode(env.JWT_SECRET);
 
-const pickEngine = (cookieHeader) =>
-  /(?:^|;\s*)engine_fb=(brave|kagi)\b/.exec(cookieHeader || "")?.[1] ||
-  /(?:^|;\s*)engine=(brave|kagi)\b/.exec(cookieHeader || "")?.[1] ||
-  (env.SEARCH_ENGINE || "brave").toString().toLowerCase();
+const kagiEnabled = () => env.KAGI_ENABLED === "true" && Boolean(env.KAGI_DB);
+
+const pickEngine = (cookieHeader) => {
+  if (!kagiEnabled()) return "brave";
+  return (
+    /(?:^|;\s*)engine_fb=(brave|kagi)\b/.exec(cookieHeader || "")?.[1] ||
+    /(?:^|;\s*)engine=(brave|kagi)\b/.exec(cookieHeader || "")?.[1] ||
+    (env.SEARCH_ENGINE || "brave").toString().toLowerCase()
+  );
+};
 
 const sign = async (payload, expiry) => {
   return await new SignJWT(payload)
@@ -392,15 +398,16 @@ export default new Elysia({ adapter: CloudflareAdapter })
       };
     }
 
-    const engine = (payload.engine || env.SEARCH_ENGINE || "brave")
+    const reqEngine = (payload.engine || env.SEARCH_ENGINE || "brave")
       .toString()
       .toLowerCase();
-    if (engine !== "brave" && engine !== "kagi") {
+    if (reqEngine !== "brave" && reqEngine !== "kagi") {
       set.status = 400;
       return {
-        error: `invalid engine "${engine}" (allowed: brave, kagi)`,
+        error: `invalid engine "${reqEngine}" (allowed: brave, kagi)`,
       };
     }
+    const engine = reqEngine === "kagi" && !kagiEnabled() ? "brave" : reqEngine;
 
     const page = Math.floor(Number(payload.page ?? 0));
     if (!Number.isFinite(page) || page < 0) {
@@ -1010,6 +1017,7 @@ export default new Elysia({ adapter: CloudflareAdapter })
         ),
       )
       .replace("__results_template__", JSON.stringify(results))
+      .replace("__kagi_enabled__", kagiEnabled() ? "true" : "false")
       .replace("%%galileo_pass%%", "");
 
     return js;
