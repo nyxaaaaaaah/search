@@ -2493,13 +2493,7 @@
 
     optionsBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
-      const isVisible = optionsPopup.classList.contains("visible");
       optionsPopup.classList.toggle("visible");
-      if (!isVisible) {
-        const rect = optionsBtn.getBoundingClientRect();
-        optionsPopup.style.position = "absolute";
-        optionsPopup.style.left = `${rect.left - 217}px`;
-      }
     });
 
     document.addEventListener("mousedown", (e) => {

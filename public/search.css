@@ -227,6 +227,7 @@ aside {
 
 .tabs {
   display: flex;
+  position: relative;
   margin-top: 10px;
   padding-bottom: 0;
   gap: 4px;
@@ -3176,7 +3177,7 @@ body.images-detail-sidebar-open .images-body {
 .options-popup {
   position: absolute;
   top: 100%;
-  right: 18px;
+  right: 0;
   margin-top: 4px;
   background: var(--bg);
   border: 1px solid var(--surface1);
@@ -3201,12 +3202,6 @@ body.images-detail-sidebar-open .images-body {
     opacity: 1;
     filter: blur(0);
     pointer-events: all;
-  }
-
-  @media (max-width: 600px) {
-    right: 12px;
-    left: 12px;
-    min-width: auto;
   }
 
   .option-item {
