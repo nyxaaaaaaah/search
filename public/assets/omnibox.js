@@ -218,6 +218,9 @@ const setup = (host, input, form) => {
   const render = (list, typed) => {
     items = list;
     rows = [];
+    const wasOpen = panel.classList.contains("open");
+    const h0 = wasOpen ? panel.getBoundingClientRect().height : 0;
+    for (const a of panel.getAnimations()) a.cancel();
     panel.textContent = "";
 
     list.forEach((item, i) => {
@@ -278,6 +281,23 @@ const setup = (host, input, form) => {
     active = -1;
     panel.classList.add("open");
     input.setAttribute("aria-expanded", "true");
+    const h1 = panel.getBoundingClientRect().height;
+    if (
+      wasOpen &&
+      h0 &&
+      h0 !== h1 &&
+      !matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      panel.style.overflow = "hidden";
+      panel
+        .animate([{ height: `${h0}px` }, { height: `${h1}px` }], {
+          duration: 220,
+          easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+        })
+        .finished.finally(() => {
+          panel.style.overflow = "";
+        });
+    }
   };
 
   const load = async (q) => {

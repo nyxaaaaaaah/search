@@ -30,10 +30,16 @@ const getSecret = () => new TextEncoder().encode(env.JWT_SECRET);
 
 const kagiEnabled = () => env.KAGI_ENABLED === "true" && Boolean(env.KAGI_DB);
 
+const engineOrder = (primary) =>
+  primary === "kagi" && kagiEnabled()
+    ? ["kagi", "brave"]
+    : kagiEnabled() || (env.KAGI_FALLBACK === "true" && Boolean(env.KAGI_DB))
+      ? ["brave", "kagi"]
+      : ["brave"];
+
 const pickEngine = (cookieHeader) => {
   if (!kagiEnabled()) return "brave";
   return (
-    /(?:^|;\s*)engine_fb=(brave|kagi)\b/.exec(cookieHeader || "")?.[1] ||
     /(?:^|;\s*)engine=(brave|kagi)\b/.exec(cookieHeader || "")?.[1] ||
     (env.SEARCH_ENGINE || "brave").toString().toLowerCase()
   );
@@ -421,7 +427,7 @@ export default new Elysia({ adapter: CloudflareAdapter })
         query,
         type,
         page,
-        engine,
+        engines: engineOrder(engine),
         lens: payload.lens,
         db: env.KAGI_DB,
       });
@@ -430,6 +436,10 @@ export default new Elysia({ adapter: CloudflareAdapter })
       return { error: "search failed", detail: String(e?.message || e) };
     }
 
+    if (data.search_error) {
+      set.status = 502;
+      set.headers["cache-control"] = "no-store";
+    }
     return { query, type, page, engine, ...data };
   })
   .get("/suggest", async ({ query, set }) => {
@@ -753,7 +763,7 @@ export default new Elysia({ adapter: CloudflareAdapter })
         const data = await runSearch({
           query: q,
           type: pageType || "web",
-          engine: pickEngine(request.headers.get("cookie")),
+          engines: engineOrder(pickEngine(request.headers.get("cookie"))),
           db: env.KAGI_DB,
         });
         if (data.first_result?.url) return redirect(data.first_result.url);
@@ -980,7 +990,7 @@ export default new Elysia({ adapter: CloudflareAdapter })
       results = await runSearch({
         query: payload.s,
         type: "images",
-        engine: pickEngine(headers?.cookie),
+        engines: engineOrder(pickEngine(headers?.cookie)),
         db: env.KAGI_DB,
       });
     } else if (payload.t === "news") {
@@ -988,7 +998,7 @@ export default new Elysia({ adapter: CloudflareAdapter })
       results = await runSearch({
         query: payload.s,
         type: "news",
-        engine: pickEngine(headers?.cookie),
+        engines: engineOrder(pickEngine(headers?.cookie)),
         db: env.KAGI_DB,
       });
     } else {
@@ -996,15 +1006,20 @@ export default new Elysia({ adapter: CloudflareAdapter })
       results = await runSearch({
         query: payload.s,
         type: "web",
-        engine: pickEngine(headers?.cookie),
+        engines: engineOrder(pickEngine(headers?.cookie)),
         db: env.KAGI_DB,
       });
     }
 
+    if (results?.search_error) set.headers["cache-control"] = "no-store";
+
     const js = template
       .replace(
         "__results_pk__",
-        await sign({ q: payload.s, p: 1, t: payload.t }, "2h"),
+        await sign(
+          { q: payload.s, p: 1, t: payload.t, e: results.engine },
+          "2h",
+        ),
       )
       .replace(
         "__results_cl__",
@@ -1077,7 +1092,9 @@ export default new Elysia({ adapter: CloudflareAdapter })
         query: q,
         type: isImages ? "images" : isNews ? "news" : "web",
         page,
-        engine: pickEngine(headers?.cookie),
+        engines: payload.e
+          ? [payload.e]
+          : engineOrder(pickEngine(headers?.cookie)),
         db: env.KAGI_DB,
       });
 
@@ -1086,6 +1103,7 @@ export default new Elysia({ adapter: CloudflareAdapter })
           {
             q: q,
             p: page + 1,
+            e: results.engine,
             ...(isImages ? { t: "images" } : isNews ? { t: "news" } : {}),
           },
           "2h",

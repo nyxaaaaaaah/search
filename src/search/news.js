@@ -22,7 +22,7 @@ const simplify = (node) => {
   }
 };
 
-export default async function searchNews(query, page = 0) {
+export default async function searchNews(query, page = 0, { attempts } = {}) {
   const resp = await braveFetch(
     `https://search.brave.com/news?q=${encodeURIComponent(query)}${page ? `&offset=${page}` : ""}&source=web`,
     {
@@ -32,6 +32,8 @@ export default async function searchNews(query, page = 0) {
       },
       referrerPolicy: "strict-origin-when-cross-origin",
       method: "GET",
+      sniffBlockPage: true,
+      attempts,
     },
   );
 
@@ -78,9 +80,6 @@ export default async function searchNews(query, page = 0) {
     };
   } catch (e) {
     console.error("news search parse error:", e);
-    return {
-      more_results_available: false,
-      results: [],
-    };
+    throw new Error(`brave news parse failed (${resp.status})`);
   }
 }

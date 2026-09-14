@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { parseKagiHtml } from "./kagi.js";
 
 const fixture = readFileSync(
-  new URL("../../../kagibot/fixtures/search.html", import.meta.url),
+  new URL("./kagibot/fixtures/search.html", import.meta.url),
   "utf8",
 );
 

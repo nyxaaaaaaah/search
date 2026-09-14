@@ -17,6 +17,116 @@
     return "#";
   };
 
+  const safeHtml = (html) => {
+    const allowed = new Set([
+      "strong",
+      "b",
+      "em",
+      "br",
+      "span",
+      "p",
+      "ul",
+      "ol",
+      "li",
+      "a",
+    ]);
+    const doc = new DOMParser().parseFromString(
+      String(html || ""),
+      "text/html",
+    );
+    const walk = (node, out) => {
+      for (const child of node.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          out.append(child.textContent);
+          continue;
+        }
+        if (child.nodeType !== Node.ELEMENT_NODE) continue;
+        const tag = child.tagName.toLowerCase();
+        if (!allowed.has(tag)) {
+          walk(child, out);
+          continue;
+        }
+        const el = document.createElement(tag);
+        if (tag === "a") {
+          const href = child.getAttribute("href") || "";
+          if (!/^https?:\/\//i.test(href)) {
+            walk(child, out);
+            continue;
+          }
+          el.href = href;
+          el.rel = "noopener";
+        }
+        walk(child, el);
+        out.append(el);
+      }
+    };
+    const frag = document.createElement("div");
+    walk(doc.body, frag);
+    return frag.innerHTML;
+  };
+
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const staggerIn = (nodes, from = 0) => {
+    let i = 0;
+    for (const el of nodes) {
+      if (el.dataset.entered) continue;
+      el.dataset.entered = "1";
+      el.style.setProperty("--enter-i", String(Math.min(from + i, 9)));
+      el.classList.add("enter");
+      i++;
+    }
+  };
+
+  const animateResize = (
+    el,
+    mutate,
+    { duration = 300, columnsOf, grid, deferCollapse = false } = {},
+  ) => {
+    const h0 = el.getBoundingClientRect().height;
+    const c0 = columnsOf?.()?.getBoundingClientRect().width;
+    for (const a of el.getAnimations()) a.cancel();
+    for (const a of grid?.getAnimations() || []) a.cancel();
+    mutate();
+    if (reducedMotion) return Promise.resolve();
+    const h1 = el.getBoundingClientRect().height;
+    const c1 = columnsOf?.()?.getBoundingClientRect().width;
+    const deferred = deferCollapse && h1 < h0;
+    if (deferred) mutate();
+    const easing = "cubic-bezier(0.23, 1, 0.32, 1)";
+    const anims = [];
+    if (h0 !== h1) {
+      const prevOverflow = el.style.overflow;
+      el.style.overflow = "hidden";
+      el.dataset.resizing = h1 < h0 ? "shrink" : "grow";
+      const a = el.animate(
+        [
+          { height: `${h0}px`, maxHeight: `${h0}px` },
+          { height: `${h1}px`, maxHeight: `${h1}px` },
+        ],
+        { duration, easing },
+      );
+      anims.push(
+        a.finished.finally(() => {
+          if (deferred) mutate();
+          el.style.overflow = prevOverflow;
+          delete el.dataset.resizing;
+        }),
+      );
+    }
+    if (grid && c0 !== undefined && c1 !== undefined && c0 !== c1) {
+      const a = grid.animate(
+        [
+          { gridTemplateColumns: `${c0}px 1fr` },
+          { gridTemplateColumns: `${c1}px 1fr` },
+        ],
+        { duration, easing },
+      );
+      anims.push(a.finished);
+    }
+    return Promise.all(anims).catch(() => {});
+  };
+
   const analyzeImage = (pick) =>
     new Promise((resolve) => {
       const im = new Image();
@@ -284,7 +394,7 @@
     }));
   };
 
-  const renderWebResult = (r) => {
+  const renderWebResult = (r, engine = data.engine) => {
     const favicon = r.meta_url?.favicon || r.profile?.img || "";
     const siteName = r.profile?.name || r.meta_url?.hostname || "";
     const title = r.title || "";
@@ -376,7 +486,8 @@
 
     const desc = document.createElement("p");
     desc.className = "result-desc";
-    desc.innerHTML = r.description || "";
+    if (engine === "kagi") desc.textContent = r.description || "";
+    else desc.innerHTML = r.description || "";
 
     const content = document.createElement("div");
     content.className = "result-content";
@@ -411,7 +522,8 @@
         if (c.description) {
           const desc = document.createElement("div");
           desc.className = "link-cluster-desc";
-          desc.innerHTML = c.description;
+          if (engine === "kagi") desc.textContent = c.description;
+          else desc.innerHTML = c.description;
           item.append(desc);
         }
 
@@ -813,7 +925,7 @@
       tag.className = "thread-label";
       tag.textContent = label;
       const p = document.createElement("p");
-      if (html) p.innerHTML = text;
+      if (html) p.innerHTML = safeHtml(text);
       else p.textContent = text;
       node.append(tag, p);
       thread.append(node);
@@ -850,41 +962,104 @@
     return article;
   };
 
-  const renderFaqResult = (r) => {
-    const details = document.createElement("details");
-    details.className = "faq-item";
+  const renderFaqResult = (r, group) => {
+    const item = document.createElement("div");
+    item.className = "faq-item";
 
-    const summary = document.createElement("summary");
-    summary.className = "faq-question";
-    summary.textContent = r.question || "";
-    details.append(summary);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "faq-question";
+    btn.setAttribute("aria-expanded", "false");
+    const q = document.createElement("span");
+    q.className = "faq-question-text";
+    q.textContent = r.question || "";
+    const icon = document.createElement("span");
+    icon.className = "faq-icon";
+    icon.setAttribute("aria-hidden", "true");
+    btn.append(q, icon);
+
+    const panel = document.createElement("div");
+    panel.className = "faq-panel";
+    panel.hidden = true;
+
+    const inner = document.createElement("div");
+    inner.className = "faq-panel-inner";
 
     const answerDiv = document.createElement("div");
     answerDiv.className = "faq-answer";
-    answerDiv.innerHTML = r.answer || "";
-    details.append(answerDiv);
+    answerDiv.innerHTML = safeHtml(r.answer || "");
+    inner.append(answerDiv);
 
-    const source = document.createElement("div");
+    const source = document.createElement("a");
     source.className = "faq-source";
-
+    source.href = safeUrl(r.url);
     if (r.meta_url?.favicon) {
       const favicon = document.createElement("img");
       favicon.src = safeUrl(r.meta_url.favicon);
       favicon.className = "favicon";
       favicon.alt = "";
       favicon.loading = "lazy";
+      favicon.onerror = () => favicon.remove();
       source.append(favicon);
     }
+    const host = document.createElement("span");
+    host.className = "faq-source-host";
+    host.textContent = r.meta_url?.hostname || r.title || "";
+    const ttl = document.createElement("span");
+    ttl.className = "faq-source-title";
+    ttl.textContent = r.title && r.title !== host.textContent ? r.title : "";
+    source.append(host, ttl);
+    inner.append(source);
+    panel.append(inner);
 
-    const link = document.createElement("a");
-    link.href = safeUrl(r.url);
-    link.className = "faq-source-link";
-    link.textContent = r.meta_url?.hostname || r.title || "";
-    source.append(link);
+    const setOpen = (open) => {
+      item.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", String(open));
+      const startH = panel.hidden ? 0 : panel.getBoundingClientRect().height;
+      for (const a of panel.getAnimations()) a.cancel();
+      panel.hidden = false;
+      panel.style.height = "auto";
+      panel.style.overflow = "hidden";
+      const endH = open ? panel.getBoundingClientRect().height : 0;
+      if (reducedMotion || startH === endH) {
+        panel.hidden = !open;
+        panel.style.height = "";
+        panel.style.overflow = "";
+        return;
+      }
+      const anim = panel.animate(
+        [
+          { height: `${startH}px`, opacity: open ? 0.4 : 1 },
+          { height: `${endH}px`, opacity: open ? 1 : 0 },
+        ],
+        {
+          duration: open ? 260 : 195,
+          easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+          fill: "both",
+        },
+      );
+      anim.finished
+        .then(() => {
+          panel.hidden = !open;
+          panel.style.height = "";
+          panel.style.overflow = "";
+          anim.cancel();
+        })
+        .catch(() => {});
+    };
 
-    details.append(source);
+    btn.addEventListener("click", () => {
+      const open = !item.classList.contains("open");
+      if (open && group.current && group.current !== item) {
+        group.current.__setOpen(false);
+      }
+      group.current = open ? item : null;
+      setOpen(open);
+    });
+    item.__setOpen = setOpen;
 
-    return details;
+    item.append(btn, panel);
+    return item;
   };
 
   const renderFaqSection = (faq) => {
@@ -897,9 +1072,13 @@
     heading.textContent = "people also ask";
     section.append(heading);
 
+    const list = document.createElement("div");
+    list.className = "faq-list";
+    const group = { current: null };
     for (const item of faq.results.slice(0, 5)) {
-      section.append(renderFaqResult(item));
+      list.append(renderFaqResult(item, group));
     }
+    section.append(list);
 
     return section;
   };
@@ -979,7 +1158,7 @@
         const answerEl = document.createElement("div");
         answerEl.className = "infobox-answer";
         answerEl.classList.add("selected-answer");
-        answerEl.innerHTML = info.data.answer.text;
+        answerEl.innerHTML = safeHtml(info.data.answer.text);
 
         const upvoteEl = document.createElement("span");
         upvoteEl.className = "title";
@@ -992,11 +1171,11 @@
         if (answer.text === info.data.answer?.text) return;
         const answerEl = document.createElement("div");
         answerEl.className = "infobox-answer";
-        answerEl.innerHTML = answer.text;
+        answerEl.innerHTML = safeHtml(answer.text);
 
         const upvoteEl = document.createElement("span");
         upvoteEl.className = "title";
-        upvoteEl.innerHTML = `<b>${answer.author}</b> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-up"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 15l6 -6l6 6" /></svg> ${answer.upvoteCount || 0}`;
+        upvoteEl.innerHTML = `<b>${safeHtml(String(answer.author ?? ""))}</b> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-up"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 15l6 -6l6 6" /></svg> ${answer.upvoteCount || 0}`;
         answerEl.prepend(upvoteEl);
         questionEl.append(answerEl);
       });
@@ -1010,6 +1189,14 @@
           const or = copyBtn.innerHTML;
 
           navigator.clipboard.writeText(block.textContent || "");
+          if (!reducedMotion)
+            copyBtn.animate(
+              [{ transform: "scale(0.85)" }, { transform: "scale(1)" }],
+              {
+                duration: 220,
+                easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+              },
+            );
           copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-check"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>`;
           setTimeout(() => {
             copyBtn.innerHTML = or;
@@ -1027,10 +1214,10 @@
       showMore.classList.add("sticky");
       showMore.textContent = "show more";
       showMore.onclick = () => {
-        questionEl.classList.toggle("expanded");
-        showMore.textContent = questionEl.classList.contains("expanded")
-          ? "show less"
-          : "show more";
+        animateResize(questionEl, () => {
+          const expanded = questionEl.classList.toggle("expanded");
+          showMore.textContent = expanded ? "show less" : "show more";
+        });
       };
       box.append(showMore);
 
@@ -1069,7 +1256,7 @@
             if (isHeader) {
               const dt = document.createElement("dt");
               dt.className = "infobox-attr-header";
-              dt.innerHTML = attr[0];
+              dt.innerHTML = safeHtml(attr[0]);
               if (i >= VISIBLE_COUNT) dt.classList.add("hidden");
               dl.append(dt);
             } else if (attr[1] !== null) {
@@ -1092,7 +1279,7 @@
                 };
                 dd.append(img);
               } else {
-                dd.innerHTML = attr[1];
+                dd.innerHTML = safeHtml(attr[1]);
               }
               row.append(dt, dd);
               dl.append(row);
@@ -1134,10 +1321,22 @@
         toggleBtn.className = "infobox-toggle";
         toggleBtn.textContent = "show more";
         toggleBtn.onclick = () => {
-          const isExpanded = attrsContainer.classList.toggle("expanded");
-          toggleBtn.textContent = isExpanded ? "show less" : "show more";
+          const expanded = !attrsContainer.classList.contains("expanded");
+          toggleBtn.textContent = expanded ? "show less" : "show more";
+          animateResize(
+            attrsContainer,
+            () => attrsContainer.classList.toggle("expanded"),
+            {
+              grid: dl,
+              columnsOf: () => dl.querySelector(".infobox-attr-row dt"),
+              deferCollapse: true,
+            },
+          );
         };
-        dl.append(toggleBtn);
+        const wrap = document.createElement("div");
+        wrap.className = "infobox-toggle-wrap";
+        wrap.append(toggleBtn);
+        dl.append(wrap);
       }
 
       attrsContainer.append(dl);
@@ -2261,8 +2460,11 @@
       toggle.className = "rich-genius-toggle";
       toggle.textContent = "show full lyrics";
       toggle.onclick = () => {
-        const collapsed = wrap.classList.toggle("rich-genius-collapsed");
-        toggle.textContent = collapsed ? "show full lyrics" : "show less";
+        let collapsed;
+        animateResize(wrap, () => {
+          collapsed = wrap.classList.toggle("rich-genius-collapsed");
+          toggle.textContent = collapsed ? "show full lyrics" : "show less";
+        });
       };
       el.append(toggle);
     });
@@ -2332,8 +2534,11 @@
         toggle.className = "discussions-toggle";
         toggle.textContent = `show ${items.length - 1} more`;
         toggle.onclick = () => {
-          list.classList.remove("collapsed");
-          toggle.remove();
+          toggle.disabled = true;
+          toggle.classList.add("leaving");
+          animateResize(list, () => list.classList.remove("collapsed")).then(
+            () => toggle.remove(),
+          );
         };
         section.append(toggle);
       }
@@ -2529,53 +2734,51 @@
       !r.infobox?.results?.length &&
       !r.videos?.results?.length &&
       !r.rich?.length;
-    const retryKey = `ms-retry:${currentQuery}`;
-    const fbKey = `ms-engfb:${currentQuery}`;
-    const retries = Number(sessionStorage.getItem(retryKey) || 0);
-
-    if (
-      isEmpty &&
-      currentQuery &&
-      retries >= 3 &&
-      !sessionStorage.getItem(fbKey)
-    ) {
-      const other = data.engine === "kagi" ? "brave" : "kagi";
-      sessionStorage.setItem(fbKey, other);
-      sessionStorage.setItem(retryKey, "4");
-      document.cookie = `engine_fb=${other}; path=/; max-age=90; samesite=lax`;
-      location.reload();
-    } else if (isEmpty && currentQuery && retries < 3) {
-      sessionStorage.setItem(retryKey, String(retries + 1));
-      document.getElementById("results-all").innerHTML =
-        '<div class="results-retrying" role="status" aria-label="retrying"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M12 3a9 9 0 1 0 9 9" /></svg></div>';
-      setTimeout(
-        () => {
+    const resultsAll = document.getElementById("results-all");
+    if (isEmpty && currentQuery) {
+      const box = document.createElement("div");
+      box.className = "results-empty";
+      const failed = Boolean(data.search_error);
+      const title = document.createElement("p");
+      title.className = "results-empty-title";
+      title.textContent = failed
+        ? "search failed"
+        : `no results for "${currentQuery}"`;
+      const detail = document.createElement("p");
+      detail.className = "results-empty-detail";
+      detail.textContent = failed
+        ? data.search_error
+        : "try fewer or different words";
+      box.append(title, detail);
+      if (failed) {
+        const retry = document.createElement("button");
+        retry.className = "results-retry";
+        retry.type = "button";
+        retry.textContent = "try again";
+        retry.onclick = () => {
+          retry.disabled = true;
+          retry.textContent = "retrying…";
           const u = new URL(location.href);
-          u.searchParams.set("_r", String(retries + 1));
+          u.searchParams.set("_r", String(Date.now() % 100000));
           location.replace(u.toString());
-        },
-        500 + retries * 400,
-      );
-    } else {
-      sessionStorage.removeItem(retryKey);
-      let banner = null;
-      const fb = sessionStorage.getItem(fbKey);
-      if (fb && fb === data.engine && !isEmpty) {
-        sessionStorage.removeItem(fbKey);
-        banner = document.createElement("div");
-        banner.className = "engine-banner";
-        banner.textContent = `switched to ${fb} after 3 fails`;
+        };
+        box.append(retry);
       }
-      import("/s/widgets.js")
-        .then(({ renderLocalWidgets }) => {
-          const widget = renderLocalWidgets(currentQuery);
-          if (widget) document.getElementById("results-all").prepend(widget);
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (banner) document.getElementById("results-all").prepend(banner);
-        });
+      resultsAll.append(box);
+    } else if (data.fallback_from && data.engine !== data.fallback_from) {
+      const banner = document.createElement("div");
+      banner.className = "engine-banner";
+      banner.textContent = `${data.fallback_from} ${data.fallback_reason || "didn't answer"}, showing ${data.engine} results`;
+      resultsAll.prepend(banner);
     }
+    import("/s/widgets.js")
+      .then(({ renderLocalWidgets }) => {
+        const widget = renderLocalWidgets(currentQuery);
+        if (widget) resultsAll.prepend(widget);
+      })
+      .catch(() => {});
+    staggerIn(resultsAll.children);
+    staggerIn(document.getElementById("sidebar").children, 2);
   }
 
   let pk = "__results_pk__";
@@ -2584,7 +2787,7 @@
 
     isLoading = true;
     const loadingEl = document.getElementById("loading-indicator");
-    loadingEl.style.display = "flex";
+    loadingEl.classList.add("visible");
 
     try {
       const res = await fetch("/p", {
@@ -2610,7 +2813,7 @@
 
       if (newData.error || !newData.results?.web?.results?.length) {
         hasMoreResults = false;
-        loadingEl.style.display = "none";
+        loadingEl.classList.remove("visible");
         if (!newData.results?.web?.results?.length) {
           const endEl = document.createElement("div");
           endEl.className = "end-of-results";
@@ -2623,9 +2826,13 @@
       const resultsContainer = document.getElementById("results-all");
       const webResults = newData.results.web.results;
 
+      const added = [];
       for (const r of webResults) {
-        resultsContainer.append(renderWebResult(r));
+        const node = renderWebResult(r, newData.engine || data.engine);
+        resultsContainer.append(node);
+        added.push(node);
       }
+      staggerIn(added);
 
       hasMoreResults =
         newData.more_results_available !== false && webResults.length > 0;
@@ -2634,8 +2841,7 @@
     } finally {
       isLoading = false;
 
-      if (document.getElementById("loading-indicator"))
-        document.getElementById("loading-indicator").style.display = "none";
+      loadingEl.classList.remove("visible");
     }
   };
 

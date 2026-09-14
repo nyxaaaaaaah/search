@@ -3,6 +3,7 @@ import searchImages from "./images.js";
 import searchKagiWeb from "./kagi.js";
 import searchMixed from "./mixed.js";
 import searchNews from "./news.js";
+import { emptyResults } from "./shape.js";
 
 function firstWeb(data) {
   const web = data?.results?.web?.results || [];
@@ -15,11 +16,25 @@ function firstWeb(data) {
   };
 }
 
+const hasAnything = (data, tab) => {
+  const r = data?.results;
+  if (!r) return false;
+  if (tab === "images" || tab === "news") return Boolean(r.length);
+  return Boolean(
+    r.web?.results?.length ||
+      r.news?.results?.length ||
+      r.videos?.results?.length ||
+      r.infobox?.results?.length ||
+      r.discussions?.results?.length ||
+      r.rich?.length,
+  );
+};
+
 export async function runSearch({
   query,
   type = "web",
   page = 0,
-  engine = "brave",
+  engines = ["brave"],
   lens,
   db,
 } = {}) {
@@ -30,37 +45,37 @@ export async function runSearch({
 
   const tab = parsed.tab || type || "web";
   const q = parsed.engineQuery || parsed.query || "";
-  const useKagi =
-    engine === "kagi" && tab !== "images" && tab !== "news" && tab !== "maps";
+  const webTab = tab !== "images" && tab !== "news" && tab !== "maps";
+  const order = engines.filter(
+    (e, i, a) => a.indexOf(e) === i && (webTab || e === "brave"),
+  );
+  if (!order.length) order.push("brave");
+  const attempts = order.length > 1 ? 1 : 2;
 
   const t0 = Date.now();
   let data;
-  let searchError;
-  try {
-    if (tab === "images") data = await searchImages(q, page);
-    else if (tab === "news") data = await searchNews(q, page);
-    else if (useKagi) data = await searchKagiWeb(q, page, db);
-    else data = await searchMixed(q, page);
-  } catch (e) {
-    searchError = String(e?.message || e);
-    data = {
-      more_results_available: false,
-      results: {
-        web: { results: [] },
-        news: null,
-        videos: null,
-        discussions: null,
-        faq: null,
-        infobox: null,
-        rich: null,
-        qanda: null,
-        locations: null,
-        recepies: null,
-        images: null,
-        mixed: [],
-      },
-    };
+  let used = order[0];
+  const errors = [];
+  for (const eng of order) {
+    try {
+      let attempt;
+      if (tab === "images") attempt = await searchImages(q, page, { attempts });
+      else if (tab === "news")
+        attempt = await searchNews(q, page, { attempts });
+      else if (eng === "kagi") attempt = await searchKagiWeb(q, page, db);
+      else attempt = await searchMixed(q, page, { attempts });
+      const ok = hasAnything(attempt, tab);
+      if (ok || !data) {
+        data = attempt;
+        used = eng;
+      }
+      if (ok) break;
+    } catch (e) {
+      errors.push({ engine: eng, error: e });
+    }
   }
+  const failed = !data;
+  if (!data) data = { more_results_available: false, results: emptyResults() };
   const took = Date.now() - t0;
 
   const web = data?.results?.web?.results;
@@ -79,9 +94,24 @@ export async function runSearch({
     query: parsed.query,
     type: outType,
     page,
-    engine: useKagi ? "kagi" : "brave",
+    engine: used,
     took,
-    ...(searchError ? { search_error: searchError } : {}),
+    ...(used !== order[0]
+      ? {
+          fallback_from: order[0],
+          fallback_reason: errors.find((e) => e.engine === order[0])?.error
+            ?.blocked
+            ? "is rate limited"
+            : "didn't answer",
+        }
+      : {}),
+    ...(failed
+      ? {
+          search_error: errors
+            .map((e) => `${e.engine}: ${String(e.error?.message || e.error)}`)
+            .join("; "),
+        }
+      : {}),
     parsed,
     ...(first_result ? { first_result } : {}),
     ...data,

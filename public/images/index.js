@@ -567,7 +567,7 @@
     if (isLoading || !hasMoreResults || !currentQuery) return;
     isLoading = true;
     const loadingEl = document.getElementById("loading-indicator");
-    loadingEl.style.display = "flex";
+    loadingEl.classList.add("visible");
 
     try {
       const res = await fetch("/p", {
@@ -593,7 +593,7 @@
 
       if (newData.error || !newData.results?.length) {
         hasMoreResults = false;
-        loadingEl.style.display = "none";
+        loadingEl.classList.remove("visible");
         if (!newData.results?.length) {
           const endEl = document.createElement("div");
           endEl.className = "end-of-results";
@@ -611,7 +611,9 @@
     } finally {
       isLoading = false;
       if (document.getElementById("loading-indicator")) {
-        document.getElementById("loading-indicator").style.display = "none";
+        document
+          .getElementById("loading-indicator")
+          .classList.remove("visible");
       }
     }
   };

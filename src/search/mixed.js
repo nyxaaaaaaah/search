@@ -22,7 +22,7 @@ const simplify = (node) => {
   }
 };
 
-export default async function search(query, page = 0) {
+export default async function search(query, page = 0, { attempts } = {}) {
   const resp = await braveFetch(
     `https://search.brave.com/search?q=${encodeURIComponent(
       query,
@@ -34,6 +34,8 @@ export default async function search(query, page = 0) {
       },
       referrerPolicy: "strict-origin-when-cross-origin",
       method: "GET",
+      sniffBlockPage: true,
+      attempts,
     },
   );
 
@@ -359,6 +361,6 @@ export default async function search(query, page = 0) {
     };
   } catch (e) {
     console.error("search parse error:", e);
-    return { results: {}, more_results_available: false };
+    throw new Error(`brave parse failed (${resp.status}, ${raw.length}b)`);
   }
 }
