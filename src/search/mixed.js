@@ -128,13 +128,18 @@ export default async function search(query, page = 0, { attempts } = {}) {
                 age: r.age,
                 meta_url: r.meta_url ? { hostname: r.meta_url.hostname } : null,
                 profile: r.profile ? { name: r.profile.name } : null,
-                thumbnail: r.thumbnail ? { src: r.thumbnail.src } : null,
+                thumbnail: r.thumbnail
+                  ? { src: r.thumbnail.src, original: r.thumbnail.original }
+                  : null,
                 video: r.video
                   ? {
                       duration: r.video.duration,
                       creator: r.video.creator,
                       thumbnail: r.video.thumbnail
-                        ? { src: r.video.thumbnail.src }
+                        ? {
+                            src: r.video.thumbnail.src,
+                            original: r.video.thumbnail.original,
+                          }
                         : null,
                     }
                   : null,

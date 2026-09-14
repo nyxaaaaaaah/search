@@ -809,7 +809,19 @@
   const renderVideoResult = (r, compact = false) => {
     const siteName = r.profile?.name || r.meta_url?.hostname || "";
     const url = safeUrl(r.url);
-    const thumb = r.thumbnail?.src || r.video?.thumbnail?.src || "";
+    const ytId = url.match(
+      /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/,
+    )?.[1];
+    const thumbs = [
+      r.thumbnail?.src,
+      r.video?.thumbnail?.src,
+      ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : "",
+      r.thumbnail?.original,
+      r.video?.thumbnail?.original,
+    ]
+      .map((u) => (u ? safeUrl(u) : ""))
+      .filter((u, i, a) => u.startsWith("https://") && a.indexOf(u) === i);
+    const thumb = thumbs[0] || "";
     const duration = r.video?.duration || "";
     const creator = r.video?.creator || "";
     const age = r.age || "";
@@ -819,10 +831,21 @@
 
     if (thumb) {
       const thumbImg = document.createElement("img");
-      thumbImg.src = safeUrl(thumb);
       thumbImg.className = "video-thumb";
       thumbImg.alt = "";
       thumbImg.loading = "lazy";
+      let attempt = 0;
+      thumbImg.onerror = () => {
+        attempt++;
+        if (attempt < thumbs.length) {
+          thumbImg.src = thumbs[attempt];
+          return;
+        }
+        const placeholder = document.createElement("div");
+        placeholder.className = "video-thumb-placeholder";
+        thumbImg.replaceWith(placeholder);
+      };
+      thumbImg.src = thumb;
       thumbContainer.append(thumbImg);
     } else {
       const placeholder = document.createElement("div");
