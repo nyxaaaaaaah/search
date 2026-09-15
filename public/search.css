@@ -682,7 +682,7 @@ a.infobox-hero-wide:hover img {
 }
 .discussions-toggle {
   transition:
-    opacity var(--duration-base),
+    opacity 0.3s var(--ease-out),
     transform var(--duration-base) var(--ease-out);
 
   &:active {
@@ -1293,6 +1293,12 @@ a.infobox-hero-wide:hover img {
 
   &.expanded[data-resizing="shrink"] .infobox-toggle-wrap::before {
     opacity: 1;
+  }
+
+  &[data-resizing] .infobox-toggle-wrap {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg);
   }
 
   &.expanded {
