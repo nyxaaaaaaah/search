@@ -70,16 +70,13 @@
   const animateResize = (
     el,
     mutate,
-    { duration = 300, columnsOf, grid, deferCollapse = false } = {},
+    { duration = 300, deferCollapse = false } = {},
   ) => {
     const h0 = el.getBoundingClientRect().height;
-    const c0 = columnsOf?.()?.getBoundingClientRect().width;
     for (const a of el.getAnimations()) a.cancel();
-    for (const a of grid?.getAnimations() || []) a.cancel();
     mutate();
     if (reducedMotion) return Promise.resolve();
     const h1 = el.getBoundingClientRect().height;
-    const c1 = columnsOf?.()?.getBoundingClientRect().width;
     const deferred = deferCollapse && h1 < h0;
     if (deferred) mutate();
     const easing = "cubic-bezier(0.23, 1, 0.32, 1)";
@@ -102,16 +99,6 @@
           delete el.dataset.resizing;
         }),
       );
-    }
-    if (grid && c0 !== undefined && c1 !== undefined && c0 !== c1) {
-      const a = grid.animate(
-        [
-          { gridTemplateColumns: `${c0}px 1fr` },
-          { gridTemplateColumns: `${c1}px 1fr` },
-        ],
-        { duration, easing },
-      );
-      anims.push(a.finished);
     }
     return Promise.all(anims).catch(() => {});
   };
@@ -1338,11 +1325,7 @@
           animateResize(
             attrsContainer,
             () => attrsContainer.classList.toggle("expanded"),
-            {
-              grid: dl,
-              columnsOf: () => dl.querySelector(".infobox-attr-row dt"),
-              deferCollapse: true,
-            },
+            { deferCollapse: true },
           );
         };
         const wrap = document.createElement("div");
@@ -1353,6 +1336,24 @@
 
       attrsContainer.append(dl);
       box.append(attrsContainer);
+
+      if (hasHidden) {
+        const pinLabelColumn = () => {
+          if (!dl.isConnected) return;
+          dl.style.gridTemplateColumns = "";
+          const expanded = attrsContainer.classList.contains("expanded");
+          if (!expanded) attrsContainer.classList.add("expanded");
+          const label = getComputedStyle(dl).gridTemplateColumns.split(" ")[0];
+          if (!expanded) attrsContainer.classList.remove("expanded");
+          if (label) dl.style.gridTemplateColumns = `${label} 1fr`;
+        };
+        requestAnimationFrame(pinLabelColumn);
+        let resizeTimer;
+        addEventListener("resize", () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(pinLabelColumn, 150);
+        });
+      }
     }
 
     return box;
