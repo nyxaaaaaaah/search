@@ -1837,7 +1837,7 @@ a.infobox-hero-wide:hover img {
 
 .rich-timer,
 .rich-stopwatch {
-  border: none;
+  box-shadow: none;
   padding: 0;
 }
 
@@ -2191,7 +2191,7 @@ a.infobox-hero-wide:hover img {
 
 .rich-news {
   background: transparent;
-  border: none;
+  box-shadow: none;
   padding: 0;
 
   h3 {
@@ -2693,20 +2693,6 @@ a.infobox-hero-wide:hover img {
   padding: 24px;
   color: var(--muted);
   font-size: 0.9rem;
-  animation: enter-rise 0.24s var(--ease-out) backwards;
-}
-
-#results-all > .enter,
-#sidebar > .enter {
-  animation: enter-rise 0.26s var(--ease-out) backwards;
-  animation-delay: calc(var(--enter-i, 0) * 28ms);
-}
-
-@keyframes enter-rise {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
 }
 
 .captcha-loader {
@@ -3335,7 +3321,6 @@ body.images-detail-sidebar-open .images-body {
 }
 
 .engine-banner {
-  animation: enter-rise 0.26s var(--ease-out) backwards;
   background: color-mix(in srgb, var(--blue) 9%, #1e1e2e);
   border-radius: 12px;
   padding: 11px 16px;
@@ -5971,13 +5956,6 @@ body.images-detail-sidebar-open .images-body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #results-all > .enter,
-  #sidebar > .enter,
-  .end-of-results,
-  .engine-banner {
-    animation: w-rm-fade var(--duration-slow) linear backwards;
-    animation-delay: 0s;
-  }
   .faq-icon,
   .faq-icon::before,
   .faq-icon::after {

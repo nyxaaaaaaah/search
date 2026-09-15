@@ -67,17 +67,6 @@
 
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const staggerIn = (nodes, from = 0) => {
-    let i = 0;
-    for (const el of nodes) {
-      if (el.dataset.entered) continue;
-      el.dataset.entered = "1";
-      el.style.setProperty("--enter-i", String(Math.min(from + i, 9)));
-      el.classList.add("enter");
-      i++;
-    }
-  };
-
   const animateResize = (
     el,
     mutate,
@@ -2800,8 +2789,6 @@
         if (widget) resultsAll.prepend(widget);
       })
       .catch(() => {});
-    staggerIn(resultsAll.children);
-    staggerIn(document.getElementById("sidebar").children, 2);
   }
 
   let pk = "__results_pk__";
@@ -2849,13 +2836,11 @@
       const resultsContainer = document.getElementById("results-all");
       const webResults = newData.results.web.results;
 
-      const added = [];
       for (const r of webResults) {
-        const node = renderWebResult(r, newData.engine || data.engine);
-        resultsContainer.append(node);
-        added.push(node);
+        resultsContainer.append(
+          renderWebResult(r, newData.engine || data.engine),
+        );
       }
-      staggerIn(added);
 
       hasMoreResults =
         newData.more_results_available !== false && webResults.length > 0;
