@@ -88,6 +88,8 @@ bun run dev
 
 if you're self-hosting metasearch yourself, please feel free to open a pr to add your instance here!
 
+please note that most of these instances will lack kagi search support.
+
 ### license
 
 see [LICENSE](./LICENSE) for more details.
