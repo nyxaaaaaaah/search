@@ -15,7 +15,7 @@
 
 <br>
 
-[search.tiago.zip](https://search.tiago.zip) is very pretty but also small and fast metasearch engine running on cloudflare workers, sourcing answers from brave search and kagi.
+[search.tiago.zip](https://search.tiago.zip) is very pretty and fast metasearch engine running on cf workers, sourcing answers from brave search and kagi :3
 
 ### privacy-first
 
