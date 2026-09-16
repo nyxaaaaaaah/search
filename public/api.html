@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <script defer data-domain="search.tiago.zip" src="https://palantir.estrogen.delivery/Pn7xQk2.privacy.js"></script>
+    <script
+      defer
+      data-domain="search.tiago.zip"
+      src="https://palantir.estrogen.delivery/Pn7xQk2.privacy.js"
+    ></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>api / search.tiago.zip</title>
     <meta name="theme-color" content="#1F1E2E" />
@@ -393,14 +397,9 @@
     <div class="body">
       <main>
         <h1>JSON API</h1>
-        <p>
-          query the web, images, and news over a single public json endpoint with no api key, cors or ratelimits.
-        </p>
 
         <h2 class="bigh2">making a request</h2>
-        <p>
-          send a <code>POST</code> to <code>/api</code> with a JSON body.
-        </p>
+        <p>send a <code>POST</code> to <code>/api</code> with a JSON body.</p>
         <pre><code>POST /api
 Content-Type: application/json
 
@@ -437,8 +436,8 @@ Content-Type: application/json
               <td><code>page</code></td>
               <td>integer</td>
               <td>
-                optional, defaults to <code>0</code>. the result offset. <code>0</code> is the
-                first page; increment to paginate. no upper bound.
+                optional, defaults to <code>0</code>. the result offset. <code>0</code> is the first
+                page; increment to paginate. no upper bound.
               </td>
             </tr>
           </tbody>
@@ -464,9 +463,8 @@ console.log(data.results);</code></pre>
 
         <h2 class="bigh2">responses</h2>
         <p>
-          every successful response echoes <code>query</code>, <code>type</code>, and
-          <code>page</code>, exposes <code>more_results_available</code> so you know whether to
-          fetch the next page, and carries the <code>results</code> for the requested type.
+          every successful response returns an object with <code>query</code>, <code>type</code>,
+          <code>page</code>, along with <code>more_results_available</code> and the main <code>results</code> object.
         </p>
 
         <h3>web (<code>type: "web"</code>)</h3>
@@ -561,7 +559,7 @@ console.log(data.results);</code></pre>
 
         <h2 class="bigh2">errors</h2>
         <p>
-          errors come back as JSON with an <code>error</code> string and a matching status code.
+          errors are returned as JSON with an <code>error</code> string and a matching status code.
         </p>
         <table>
           <thead>
@@ -573,7 +571,10 @@ console.log(data.results);</code></pre>
           <tbody>
             <tr>
               <td><code>400</code></td>
-              <td>bad body, missing <code>query</code>, unknown <code>type</code>, or invalid <code>page</code>.</td>
+              <td>
+                bad body, missing <code>query</code>, unknown <code>type</code>, or invalid
+                <code>page</code>.
+              </td>
             </tr>
             <tr>
               <td><code>502</code></td>
@@ -608,8 +609,8 @@ console.log(data.results);</code></pre>
         <h3>response</h3>
         <p>
           <code>suggestions</code> is an ordered array. plain completions carry just a
-          <code>query</code>; rich entities (people, places, and more) set
-          <code>entity</code> and add the best-effort fields below.
+          <code>query</code>; rich entities (people, places, and more) set <code>entity</code> and
+          add the best-effort fields below.
         </p>
         <pre><code>{
   "suggestions": [
