@@ -34,9 +34,25 @@
   --muted: #7f849c;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: cubic-bezier(0.22, 1.02, 0.3, 1);
   --duration-fast: 0.1s;
   --duration-base: 0.15s;
   --duration-slow: 0.2s;
+
+  --r-card: 16px;
+  --r-control: 14px;
+  --r-surface: 12px;
+  --r-chip: 10px;
+  --r-pill: 999px;
+
+  --line: color-mix(in srgb, var(--surface0) 85%, transparent);
+  --line-strong: var(--surface1);
+  --lift-1:
+    0 0 0 1px var(--line), 0 1px 2px rgb(0 0 0 / 0.14),
+    0 4px 8px -4px rgb(0 0 0 / 0.2);
+  --lift-2:
+    0 0 0 1px var(--line-strong), 0 2px 4px rgb(0 0 0 / 0.16),
+    0 10px 24px -12px rgb(0 0 0 / 0.5);
 }
 
 :root[data-theme="amoled"] {
@@ -1505,13 +1521,11 @@ a.infobox-hero-wide:hover img {
 
 .rich-result {
   background: #1e1e2e;
-  border-radius: 16px;
+  border-radius: var(--r-card);
   padding: 18px 20px;
   margin-bottom: 16px;
-  box-shadow:
-    0 0 0 1px var(--surface0),
-    0 1px 2px rgb(0 0 0 / 0.14),
-    0 4px 8px -4px rgb(0 0 0 / 0.2);
+  box-shadow: var(--lift-1);
+  animation: w-card-in 0.34s var(--ease-out) backwards;
 }
 
 .rich-copy-btn {
@@ -1519,17 +1533,27 @@ a.infobox-hero-wide:hover img {
   border: none;
   color: var(--subtext);
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
+  padding: 12px;
+  border-radius: var(--r-chip);
   display: inline-flex;
   flex-shrink: 0;
   transition:
-    color 0.15s,
-    background 0.15s;
+    color var(--duration-base) var(--ease-out),
+    background var(--duration-base) var(--ease-out),
+    scale var(--duration-base) var(--ease-out);
 }
-.rich-copy-btn:hover {
-  color: var(--text);
-  background: var(--surface0);
+@media (hover: hover) {
+  .rich-copy-btn:hover {
+    color: var(--text);
+    background: var(--surface0);
+  }
+}
+.rich-copy-btn:active {
+  scale: 0.96;
+}
+.rich-copy-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 .rich-copy-btn.copied {
   color: #a6e3a1;
@@ -1546,8 +1570,8 @@ a.infobox-hero-wide:hover img {
 .rich-currency > .rich-copy-btn,
 .rich-timestamp > .rich-copy-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 6px;
+  right: 6px;
 }
 
 .rich-calculator {
@@ -3522,6 +3546,16 @@ body.images-detail-sidebar-open .images-body {
 
 .w-head {
   margin-bottom: 12px;
+  animation: w-card-in 0.34s var(--ease-out) backwards;
+}
+.w-body > * {
+  animation: w-card-in 0.34s var(--ease-out) 60ms backwards;
+}
+.w-body > *:nth-child(2) {
+  animation-delay: 110ms;
+}
+.w-body > *:nth-child(n + 3) {
+  animation-delay: 150ms;
 }
 
 .w-title {
@@ -3572,8 +3606,8 @@ body.images-detail-sidebar-open .images-body {
 .w-textarea,
 .w-select {
   background: var(--bg);
-  border: 1px solid var(--surface0);
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
   color: var(--text);
   padding: 13px 15px;
   font-size: 1rem;
@@ -3640,26 +3674,30 @@ body.images-detail-sidebar-open .images-body {
 .w-btn {
   background: var(--surface0);
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: var(--r-control);
   color: var(--text);
   padding: 0 20px;
   min-height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   font-size: 0.95rem;
   font-family: inherit;
   cursor: pointer;
   transition:
     background var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out),
     opacity var(--duration-base) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
+    scale var(--duration-slow) var(--ease-out);
 }
-.w-btn:hover {
-  background: var(--surface1);
+@media (hover: hover) {
+  .w-btn:hover {
+    background: var(--surface1);
+  }
 }
 .w-btn:active {
-  transform: scale(0.96);
+  scale: 0.96;
 }
 .w-btn:focus-visible {
   outline: 2px solid var(--blue);
@@ -3673,15 +3711,17 @@ body.images-detail-sidebar-open .images-body {
   background: var(--surface0);
 }
 .w-btn:disabled:active {
-  transform: none;
+  scale: 1;
 }
 .w-btn.primary {
   background: var(--blue);
   color: #1e1e2e;
   font-weight: 500;
 }
-.w-btn.primary:hover {
-  filter: brightness(1.08);
+@media (hover: hover) {
+  .w-btn.primary:hover {
+    filter: brightness(1.08);
+  }
 }
 .w-btn.active {
   background: var(--red);
@@ -3693,17 +3733,27 @@ body.images-detail-sidebar-open .images-body {
   border: none;
   color: var(--subtext);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 10px;
+  padding: 12px;
+  border-radius: var(--r-chip);
   display: inline-flex;
   flex-shrink: 0;
   transition:
-    color 0.15s,
-    background 0.15s;
+    color var(--duration-base) var(--ease-out),
+    background var(--duration-base) var(--ease-out),
+    scale var(--duration-base) var(--ease-out);
 }
-.w-copy:hover {
-  color: var(--text);
-  background: var(--surface0);
+@media (hover: hover) {
+  .w-copy:hover {
+    color: var(--text);
+    background: var(--surface0);
+  }
+}
+.w-copy:active {
+  scale: 0.96;
+}
+.w-copy:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 .w-copy.done {
   color: var(--green);
@@ -3711,9 +3761,9 @@ body.images-detail-sidebar-open .images-body {
 
 .w-out {
   background: var(--bg);
-  border: 1px solid var(--surface0);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  padding: 11px 13px;
   font-size: 0.95rem;
   color: var(--text);
   word-break: break-word;
@@ -3738,15 +3788,30 @@ body.images-detail-sidebar-open .images-body {
 .w-chk {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  min-height: 38px;
   font-size: 0.88rem;
   color: var(--subtext);
   background: var(--bg);
-  border: 1px solid var(--surface0);
-  border-radius: 8px;
-  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-chip);
+  padding: 6px 12px;
   cursor: pointer;
   text-transform: lowercase;
+  transition:
+    background var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+}
+@media (hover: hover) {
+  .w-chk:hover {
+    border-color: var(--line-strong);
+    color: var(--text);
+  }
+}
+.w-chk:has(input:focus-visible) {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 .w-chk input {
   accent-color: var(--blue);
@@ -3765,10 +3830,10 @@ body.images-detail-sidebar-open .images-body {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 10px 13px;
   background: var(--bg);
-  border-radius: 8px;
-  border: 1px solid var(--surface0);
+  border-radius: var(--r-surface);
+  border: 1px solid var(--line);
 }
 .w-stat-label {
   color: var(--subtext);
@@ -4741,9 +4806,10 @@ body.images-detail-sidebar-open .images-body {
   margin-left: auto;
 }
 .w-clock-unit {
+  position: relative;
   background: var(--surface0);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--r-chip);
   color: var(--subtext);
   font-family: inherit;
   font-size: 0.75rem;
@@ -4761,8 +4827,17 @@ body.images-detail-sidebar-open .images-body {
     color: var(--text);
   }
 }
+.w-clock-unit::after {
+  content: "";
+  position: absolute;
+  inset: -8px -6px;
+}
 .w-clock-unit:active {
   scale: 0.96;
+}
+.w-clock-unit:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 @keyframes w-clock-in {
@@ -4773,11 +4848,22 @@ body.images-detail-sidebar-open .images-body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .rich-result,
+  .rich-result *,
+  .w,
+  .w * {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .w-btn:active,
+  .w-copy:active,
+  .rich-copy-btn:active,
+  .w-clock-unit:active {
+    scale: 1;
+  }
   .w-od-r {
     transition: none;
-  }
-  .w-clock-hero {
-    animation: none;
   }
   .w-conv-result {
     animation: none;
