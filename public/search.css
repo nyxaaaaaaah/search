@@ -5962,10 +5962,10 @@ body.images-detail-sidebar-open .images-body {
 .w-tap-pad {
   width: 100%;
   min-height: 92px;
-  border: none;
+  border: 1px solid color-mix(in srgb, var(--mauve) 45%, transparent);
   border-radius: var(--r-surface);
-  background: var(--mauve);
-  color: var(--bg);
+  background: color-mix(in srgb, var(--mauve) 14%, transparent);
+  color: var(--mauve);
   font-family: inherit;
   font-size: 1.15rem;
   font-weight: 620;
@@ -5976,8 +5976,9 @@ body.images-detail-sidebar-open .images-body {
   justify-content: center;
   transition:
     scale var(--duration-base) var(--ease-out),
-    filter var(--duration-base) var(--ease-out),
-    box-shadow var(--duration-base) var(--ease-out);
+    background var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
 }
 .w-tap-pad-label {
   text-transform: uppercase;
@@ -5990,13 +5991,15 @@ body.images-detail-sidebar-open .images-body {
 }
 @media (hover: hover) {
   .w-tap-pad:hover {
-    filter: brightness(1.06);
+    background: color-mix(in srgb, var(--mauve) 22%, transparent);
   }
 }
 .w-tap-pad:active,
 .w-tap-pad.hit {
   scale: 0.96;
-  filter: brightness(1.28);
+  background: var(--mauve);
+  border-color: var(--mauve);
+  color: var(--bg);
   transition: none;
 }
 .w-react-pad {
@@ -7136,37 +7139,47 @@ body.images-detail-sidebar-open .images-body {
   font-size: 1rem;
 }
 .w-2048-tile[data-v="2"] {
-  background: var(--surface0);
+  background: color-mix(in srgb, var(--surface1) 65%, var(--surface0));
 }
 .w-2048-tile[data-v="4"] {
-  background: var(--surface1);
+  background: color-mix(in srgb, var(--subtext) 45%, var(--surface1));
+  color: var(--bg);
 }
 .w-2048-tile[data-v="8"] {
-  background: color-mix(in srgb, var(--yellow) 55%, var(--surface1));
+  background: color-mix(in srgb, var(--yellow) 65%, var(--surface1));
+  color: var(--bg);
 }
 .w-2048-tile[data-v="16"] {
   background: var(--yellow);
+  color: var(--bg);
 }
 .w-2048-tile[data-v="32"] {
   background: color-mix(in srgb, var(--red) 70%, var(--yellow));
+  color: var(--bg);
 }
 .w-2048-tile[data-v="64"] {
   background: var(--red);
+  color: var(--bg);
 }
 .w-2048-tile[data-v="128"] {
   background: color-mix(in srgb, var(--mauve) 60%, var(--red));
+  color: var(--bg);
 }
 .w-2048-tile[data-v="256"] {
   background: var(--mauve);
+  color: var(--bg);
 }
 .w-2048-tile[data-v="512"] {
   background: color-mix(in srgb, var(--blue) 70%, var(--mauve));
+  color: var(--bg);
 }
 .w-2048-tile[data-v="1024"] {
   background: var(--blue);
+  color: var(--bg);
 }
 .w-2048-tile[data-v="2048"] {
   background: var(--green);
+  color: var(--bg);
 }
 .w-2048-tile[data-ink="dark"] {
   color: var(--bg);

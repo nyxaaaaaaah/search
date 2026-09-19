@@ -4340,7 +4340,7 @@ reg({
     ),
   build: () => {
     let taps = [];
-    const out = h("div", { class: "w-big w-tap-out" }, "tap →");
+    const out = h("div", { class: "w-big w-tap-out" }, "waiting for taps");
     const pad = h(
       "button",
       { class: "w-tap-pad", type: "button" },
@@ -4371,7 +4371,7 @@ reg({
           html: "reset",
           onclick: () => {
             taps = [];
-            out.textContent = "tap →";
+            out.textContent = "waiting for taps";
           },
         }),
       ),

@@ -485,8 +485,13 @@ export async function requestTranslation(payload, signal) {
     body: JSON.stringify(payload),
     signal,
   });
-  const data = await res.json();
-  if (!res.ok)
-    throw new Error(data?.error || `translation failed (${res.status})`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data)
+    throw new Error(
+      data?.error ||
+        (res.status === 429
+          ? "too many translations, wait a moment"
+          : "translation failed, try again"),
+    );
   return data;
 }
