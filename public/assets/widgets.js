@@ -2274,14 +2274,18 @@ reg({
     let histNav = -1;
 
     const expr = h("input", {
-      class: "w-calc2-expr w-mono",
+      class: "w-calc2-expr",
       placeholder: "0",
       spellcheck: "false",
       autocomplete: "off",
       autocapitalize: "off",
       "aria-label": "calculator expression",
     });
-    const preview = h("div", { class: "w-calc2-preview w-mono" });
+    const preview = h("div", {
+      class: "w-calc2-preview",
+      role: "status",
+      "aria-live": "polite",
+    });
     const copy = copyBtn(
       () => preview.textContent.replace(/^=\s*/, "") || expr.value,
       "copy result",
@@ -2289,8 +2293,12 @@ reg({
 
     const degBtn = h(
       "button",
-      { class: "w-calc2-deg", type: "button", title: "degrees / radians" },
-      "DEG",
+      {
+        class: "w-calc2-deg",
+        type: "button",
+        title: "Switch between degrees and radians",
+      },
+      "deg",
     );
 
     const updatePreview = () => {
@@ -2355,7 +2363,11 @@ reg({
       histList.replaceChildren();
       if (!history.length) {
         histList.append(
-          h("div", { class: "w-calc2-hist-empty" }, "no calculations yet"),
+          h(
+            "div",
+            { class: "w-calc2-hist-empty" },
+            "Results you keep show up here. Press = to save one.",
+          ),
         );
         return;
       }
@@ -2406,7 +2418,7 @@ reg({
 
     degBtn.onclick = () => {
       deg = !deg;
-      degBtn.textContent = deg ? "DEG" : "RAD";
+      degBtn.textContent = deg ? "deg" : "rad";
       updatePreview();
       expr.focus();
     };
@@ -2493,10 +2505,10 @@ reg({
       "div",
       { class: "w-calc2-mem" },
       ...[
-        ["MC", () => (mem = 0)],
-        ["MR", () => insert(calcFmt(mem))],
+        ["mc", () => (mem = 0)],
+        ["mr", () => insert(calcFmt(mem))],
         [
-          "M+",
+          "m+",
           () => {
             try {
               mem += calcEvaluate(expr.value.trim() || "0", deg);
@@ -2504,7 +2516,7 @@ reg({
           },
         ],
         [
-          "M−",
+          "m−",
           () => {
             try {
               mem -= calcEvaluate(expr.value.trim() || "0", deg);
@@ -2515,7 +2527,7 @@ reg({
         const b = h("button", { class: "w-calc2-mem-key", type: "button" }, l);
         b.onclick = () => {
           fn();
-          if (l !== "MR") expr.focus();
+          if (l !== "mr") expr.focus();
         };
         return b;
       }),
@@ -2523,7 +2535,11 @@ reg({
 
     const histClear = h(
       "button",
-      { class: "w-calc2-hist-clear", type: "button" },
+      {
+        class: "w-calc2-hist-clear",
+        type: "button",
+        "aria-label": "Clear history",
+      },
       "clear",
     );
     histClear.onclick = () => {
@@ -2786,33 +2802,37 @@ reg({
       const r = (p.a / 100) * p.b;
       return card(
         "percentage",
-        null,
-        h("div", { class: "w-big" }, `${p.a}% of ${p.b} = ${+r.toFixed(6)}`),
+        `${p.a}% of ${p.b}`,
+        h("div", { class: "w-nres" }, String(+r.toFixed(6))),
       );
     }
     const a = h("input", {
-      class: "w-input",
+      class: "w-input w-nnum",
       type: "number",
       value: "25",
       step: "any",
+      "aria-label": "Percentage",
     });
     const b = h("input", {
-      class: "w-input",
+      class: "w-input w-nnum",
       type: "number",
       value: "200",
       step: "any",
+      "aria-label": "Amount",
     });
+    const focal = h("div", {
+      class: "w-nres",
+      role: "status",
+      "aria-live": "polite",
+    });
+    const focalCap = h("div", { class: "w-sub" });
     const out = h("div", { class: "w-calc-out" });
     const run = () => {
       const x = +a.value,
         y = +b.value;
+      focal.textContent = String(+((x / 100) * y).toFixed(4));
+      focalCap.textContent = `${x}% of ${y}`;
       out.replaceChildren(
-        h(
-          "div",
-          { class: "w-stat" },
-          h("span", { class: "w-stat-label" }, `${x}% of ${y}`),
-          h("span", { class: "w-stat-val" }, +((x / 100) * y).toFixed(4)),
-        ),
         h(
           "div",
           { class: "w-stat" },
@@ -2830,13 +2850,8 @@ reg({
     return card(
       "percentage calculator",
       null,
-      h(
-        "div",
-        { class: "w-row" },
-        a,
-        h("span", { class: "w-mid" }, "%  /  of"),
-        b,
-      ),
+      h("div", { class: "w-focal" }, focal, focalCap),
+      h("div", { class: "w-row" }, a, h("span", { class: "w-mid" }, "% of"), b),
       out,
     );
   },
@@ -2847,29 +2862,40 @@ reg({
   match: (q) => /^aspect\s*ratio(?:\s+calculator)?$/i.test(q.trim()),
   build: () => {
     const w = h("input", {
-      class: "w-input w-num",
+      class: "w-input w-num w-nnum",
       type: "number",
       value: "1920",
+      "aria-label": "Width",
     });
     const hh = h("input", {
-      class: "w-input w-num",
+      class: "w-input w-num w-nnum",
       type: "number",
       value: "1080",
+      "aria-label": "Height",
     });
+    const focal = h("div", {
+      class: "w-nres",
+      role: "status",
+      "aria-live": "polite",
+    });
+    const focalCap = h("div", { class: "w-sub" }, "simplified ratio");
     const out = h("div", { class: "w-calc-out" });
     const gcd = (a, b) => (b ? gcd(b, a % b) : a);
     const run = () => {
       const a = Math.round(+w.value),
         b = Math.round(+hh.value);
-      if (!a || !b) return out.replaceChildren();
+      if (!a || !b) {
+        focal.textContent = "—";
+        out.replaceChildren();
+        return;
+      }
       const g = gcd(a, b);
+      focal.replaceChildren(
+        `${a / g}`,
+        h("span", { class: "w-nres-op" }, ":"),
+        `${b / g}`,
+      );
       out.replaceChildren(
-        h(
-          "div",
-          { class: "w-stat" },
-          h("span", { class: "w-stat-label" }, "ratio"),
-          h("span", { class: "w-stat-val" }, `${a / g} : ${b / g}`),
-        ),
         h(
           "div",
           { class: "w-stat" },
@@ -2883,6 +2909,7 @@ reg({
     return card(
       "aspect ratio",
       null,
+      h("div", { class: "w-focal" }, focal, focalCap),
       h("div", { class: "w-row" }, w, h("span", { class: "w-mid" }, "×"), hh),
       out,
     );
@@ -2904,18 +2931,27 @@ reg({
     return null;
   },
   build: ({ n }) => {
-    const inp = h("input", { class: "w-input", type: "number", value: n });
-    const out = h("div", { class: "w-calc-out" });
+    const inp = h("input", {
+      class: "w-input w-nnum",
+      type: "number",
+      value: n,
+      "aria-label": "Decimal number",
+    });
+    const out = h("div", {
+      class: "w-calc-out",
+      role: "status",
+      "aria-live": "polite",
+    });
     const run = () => {
       const v = parseInt(inp.value, 10);
       if (!Number.isFinite(v)) return out.replaceChildren();
       out.replaceChildren(
         ...[
-          ["decimal", v.toString(10)],
-          ["binary", `0b${v.toString(2)}`],
-          ["octal", `0o${v.toString(8)}`],
-          ["hex", `0x${v.toString(16).toUpperCase()}`],
-        ].map(([l, val]) =>
+          ["decimal", v.toString(10), false],
+          ["binary", `0b${v.toString(2)}`, true],
+          ["octal", `0o${v.toString(8)}`, true],
+          ["hex", `0x${v.toString(16).toUpperCase()}`, true],
+        ].map(([l, val, code]) =>
           h(
             "div",
             { class: "w-stat" },
@@ -2923,8 +2959,12 @@ reg({
             h(
               "span",
               { class: "w-row" },
-              h("span", { class: "w-stat-val w-mono" }, val),
-              copyBtn(() => val),
+              h(
+                "span",
+                { class: code ? "w-stat-val w-mono" : "w-stat-val" },
+                val,
+              ),
+              copyBtn(() => val, `Copy ${l} value`),
             ),
           ),
         ),
@@ -2984,8 +3024,17 @@ reg({
       }
       return n;
     };
-    const inp = h("input", { class: "w-input", value: p.roman || p.n });
-    const out = h("div", { class: "w-big w-mono" });
+    const inp = h("input", {
+      class: "w-input",
+      value: p.roman || p.n,
+      spellcheck: "false",
+      "aria-label": "Number or roman numeral",
+    });
+    const out = h("div", {
+      class: "w-nres w-roman-out",
+      role: "status",
+      "aria-live": "polite",
+    });
     const run = () => {
       const v = inp.value.trim();
       out.textContent = /^[ivxlcdm]+$/i.test(v)
@@ -2999,13 +3048,13 @@ reg({
     return card(
       "roman numerals",
       "number ↔ roman (1–3999)",
-      inp,
       h(
         "div",
-        { class: "w-out-row" },
+        { class: "w-out-row w-roman-row" },
         out,
-        copyBtn(() => out.textContent),
+        copyBtn(() => out.textContent, "Copy result"),
       ),
+      inp,
     );
   },
 });
@@ -3036,31 +3085,35 @@ reg({
       if (x > 1) f.push(x);
       return f;
     };
-    if (kind === "prime")
+    if (kind === "prime") {
+      const prime = isPrime(n);
       return card(
         "prime check",
         null,
+        h("div", { class: "w-nres" }, String(n)),
         h(
           "div",
-          { class: "w-big" },
-          `${n} is ${isPrime(n) ? "" : "not "}prime`,
+          { class: `w-verdict${prime ? "" : " no"}` },
+          prime ? "is prime" : "is not prime",
         ),
       );
+    }
     const f = factorize(n);
     const counts = {};
     for (const p of f) counts[p] = (counts[p] || 0) + 1;
-    const pretty = Object.entries(counts)
-      .map(([p, c]) => (c > 1 ? `${p}^${c}` : p))
-      .join(" × ");
+    const terms = Object.entries(counts).flatMap(([p, c], i) => [
+      i ? h("span", { class: "w-nres-op" }, "×") : null,
+      c > 1 ? h("span", null, p, h("sup", null, c)) : h("span", null, p),
+    ]);
     return card(
       "prime factorization",
-      null,
-      h(
-        "div",
-        { class: "w-big" },
-        `${n} = ${f.length === 1 ? `${n} (prime)` : pretty}`,
-      ),
-      h("div", { class: "w-sub" }, `factors: ${f.join(", ")}`),
+      `${n} =`,
+      f.length === 1
+        ? h("div", { class: "w-nres" }, String(n))
+        : h("div", { class: "w-nres" }, ...terms),
+      f.length === 1
+        ? h("div", { class: "w-verdict" }, "is prime")
+        : h("div", { class: "w-sub" }, `factors: ${f.join(", ")}`),
     );
   },
 });
@@ -3092,11 +3145,16 @@ reg({
       `${n} values`,
       h(
         "div",
+        { class: "w-focal" },
+        h("div", { class: "w-nres" }, String(r(mean))),
+        h("div", { class: "w-sub" }, "mean"),
+      ),
+      h(
+        "div",
         { class: "w-calc-out" },
         ...[
-          ["sum", sum],
-          ["mean", r(mean)],
           ["median", r(median)],
+          ["sum", sum],
           ["min", sorted[0]],
           ["max", sorted[n - 1]],
           ["std dev", r(Math.sqrt(variance))],
@@ -3792,12 +3850,23 @@ reg({
       class: "w-input",
       type: "date",
       value: date || "2000-01-01",
+      "aria-label": "Date of birth",
     });
+    const focal = h("div", {
+      class: "w-nres",
+      role: "status",
+      "aria-live": "polite",
+    });
+    const focalCap = h("div", { class: "w-sub" }, "age today");
     const out = h("div", { class: "w-calc-out" });
     const run = () => {
       const [Y, M, D] = (inp.value || "").split("-").map(Number);
       const d = new Date(Y, M - 1, D);
-      if (Number.isNaN(d.getTime()) || !Y) return out.replaceChildren();
+      if (Number.isNaN(d.getTime()) || !Y) {
+        focal.textContent = "—";
+        out.replaceChildren();
+        return;
+      }
       const now = new Date();
       let y = now.getFullYear() - d.getFullYear();
       let m = now.getMonth() - d.getMonth();
@@ -3811,13 +3880,15 @@ reg({
         m += 12;
       }
       const totalDays = Math.floor((now - d) / 86400000);
+      focal.replaceChildren(
+        `${y}`,
+        h("span", { class: "w-nres-unit" }, "y"),
+        `${m}`,
+        h("span", { class: "w-nres-unit" }, "m"),
+        `${days}`,
+        h("span", { class: "w-nres-unit" }, "d"),
+      );
       out.replaceChildren(
-        h(
-          "div",
-          { class: "w-stat" },
-          h("span", { class: "w-stat-label" }, "age"),
-          h("span", { class: "w-stat-val" }, `${y}y ${m}m ${days}d`),
-        ),
         h(
           "div",
           { class: "w-stat" },
@@ -3834,7 +3905,13 @@ reg({
     };
     inp.oninput = run;
     run();
-    return card("age calculator", null, inp, out);
+    return card(
+      "age calculator",
+      null,
+      h("div", { class: "w-focal" }, focal, focalCap),
+      inp,
+      out,
+    );
   },
 });
 
@@ -3864,13 +3941,22 @@ reg({
       null,
       h(
         "div",
-        { class: "w-big" },
-        `${Math.abs(days).toLocaleString()} day${Math.abs(days) === 1 ? "" : "s"}`,
-      ),
-      h(
-        "div",
-        { class: "w-sub" },
-        a ? `between ${a} and ${b}` : days >= 0 ? `until ${b}` : `since ${b}`,
+        { class: "w-focal" },
+        h(
+          "div",
+          { class: "w-nres" },
+          Math.abs(days).toLocaleString(),
+          h(
+            "span",
+            { class: "w-nres-unit" },
+            `day${Math.abs(days) === 1 ? "" : "s"}`,
+          ),
+        ),
+        h(
+          "div",
+          { class: "w-sub" },
+          a ? `between ${a} and ${b}` : days >= 0 ? `until ${b}` : `since ${b}`,
+        ),
       ),
     );
   },
@@ -6682,18 +6768,22 @@ reg({
       return card(
         "number to words",
         null,
-        h("div", { class: "w-sub" }, "number too large"),
+        h(
+          "div",
+          { class: "w-sub w-nw-limit" },
+          "That number is too large to spell out. Try one below 1 quadrillion.",
+        ),
       );
     const words = numToWords(num);
     return card(
       "number to words",
       null,
-      h("div", { class: "w-big" }, words),
+      h("div", { class: "w-nw-words" }, words),
       h(
         "div",
         { class: "w-out-row" },
-        h("div", { class: "w-out w-mono" }, num.toLocaleString()),
-        copyBtn(() => words),
+        h("div", { class: "w-out w-nnum" }, num.toLocaleString()),
+        copyBtn(() => words, "Copy the words"),
       ),
     );
   },
