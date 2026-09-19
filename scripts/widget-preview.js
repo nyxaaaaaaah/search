@@ -102,7 +102,13 @@ const page = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <div class="gallery" id="g"></div>
 <script type="module">
 import { renderLocalWidgets, __widgetCount } from "/s/widgets.js";
-const queries = ${JSON.stringify(QUERIES)};
+const all = ${JSON.stringify(QUERIES)};
+const p = new URLSearchParams(location.search);
+const one = p.get("q");
+const from = +(p.get("from") || 0);
+const to = p.get("to") ? +p.get("to") : all.length;
+const queries = one ? [one] : all.slice(from, to);
+if (one) document.getElementById("g").style.gridTemplateColumns = "minmax(0, 520px)";
 const g = document.getElementById("g");
 let hits = 0;
 for (const q of queries) {

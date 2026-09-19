@@ -211,8 +211,8 @@ reg({
     return card(
       "qr code",
       "encode any text or link",
-      input,
       wrap,
+      input,
       h(
         "div",
         { class: "w-btn-row" },
@@ -267,16 +267,11 @@ reg({
       out.textContent = [...arr].map((x) => pool[x % pool.length]).join("");
       const bits = Math.round(n * Math.log2(pool.length));
       const pct = Math.min(100, (bits / 128) * 100);
-      strengthBar.style.width = `${pct}%`;
-      const [color, word] =
-        bits < 50
-          ? ["#f38ba8", "weak"]
-          : bits < 90
-            ? ["#f9e2af", "good"]
-            : ["#a6e3a1", "strong"];
-      strengthBar.style.background = color;
+      strengthBar.style.scale = `${pct / 100} 1`;
+      const word = bits < 50 ? "weak" : bits < 90 ? "good" : "strong";
+      strengthBar.dataset.level = word;
+      strengthLabel.dataset.level = word;
       strengthLabel.textContent = `${word} · ${bits} bits`;
-      strengthLabel.style.color = color;
     };
     len.oninput = () => {
       lenLabel.textContent = len.value;
@@ -293,9 +288,13 @@ reg({
     return card(
       "password generator",
       "cryptographically random, generated in your browser",
-      h("div", { class: "w-pw-row" }, out, copy),
-      h("div", { class: "w-strength" }, strengthBar),
-      h("div", { class: "w-strength-row" }, strengthLabel),
+      h(
+        "div",
+        { class: "w-pw-card" },
+        h("div", { class: "w-pw-row" }, out, copy),
+        h("div", { class: "w-strength" }, strengthBar),
+        h("div", { class: "w-strength-row" }, strengthLabel),
+      ),
       h("label", { class: "w-label" }, "length: ", lenLabel, len),
       h(
         "div",
@@ -391,8 +390,8 @@ reg({
     return card(
       "lorem ipsum",
       "placeholder text",
-      h("label", { class: "w-label" }, "paragraphs: ", countLabel, count),
       out,
+      h("label", { class: "w-label" }, "paragraphs: ", countLabel, count),
       h(
         "div",
         { class: "w-btn-row" },
@@ -1824,9 +1823,9 @@ reg({
     const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
     const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
     const fmts = [
-      ["HEX", hex.toUpperCase()],
-      ["RGB", `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`],
-      ["HSL", `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`],
+      ["hex", hex.toUpperCase()],
+      ["rgb", `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`],
+      ["hsl", `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`],
     ];
     const sw = h("div", { class: "w-swatch", style: { background: hex } });
     const rows = fmts.map(([l, v]) =>
@@ -1835,7 +1834,7 @@ reg({
         { class: "w-color-row" },
         h("span", { class: "w-color-label" }, l),
         h("span", { class: "w-mono" }, v),
-        copyBtn(() => v),
+        copyBtn(() => v, `copy ${l}`),
       ),
     );
     return card(
@@ -1863,7 +1862,7 @@ reg({
         Math.random() * 255,
         Math.random() * 255,
       );
-      sw.style.background = hex;
+      sw.style.backgroundColor = hex;
       txt.textContent = hex.toUpperCase();
     };
     go();
@@ -1884,7 +1883,11 @@ reg({
       h(
         "div",
         { class: "w-btn-row" },
-        h("button", { class: "w-btn primary", html: "new color", onclick: go }),
+        h("button", {
+          class: "w-btn primary",
+          html: "generate color",
+          onclick: go,
+        }),
       ),
     );
   },
@@ -1907,7 +1910,10 @@ reg({
       class: "w-color-pick",
       value: "#1e1e2e",
     });
-    const ratioEl = h("div", { class: "w-big w-mono", "aria-live": "polite" });
+    const ratioEl = h("div", {
+      class: "w-big w-contrast-ratio",
+      "aria-live": "polite",
+    });
     const preview = h(
       "div",
       { class: "w-contrast-preview" },
@@ -1940,15 +1946,15 @@ reg({
     return card(
       "contrast checker",
       "WCAG ratio",
+      ratioEl,
+      grades,
+      preview,
       h(
         "div",
         { class: "w-row" },
         h("label", { class: "w-label" }, "text", fg),
-        h("label", { class: "w-label" }, "bg", bg),
+        h("label", { class: "w-label" }, "background", bg),
       ),
-      ratioEl,
-      grades,
-      preview,
     );
   },
 });
@@ -1993,9 +1999,9 @@ reg({
       h(
         "div",
         { class: "w-row" },
-        c1,
-        c2,
-        h("label", { class: "w-label" }, angleVal, angle),
+        h("label", { class: "w-label" }, "from", c1),
+        h("label", { class: "w-label" }, "to", c2),
+        h("label", { class: "w-label" }, "angle: ", angleVal, angle),
       ),
       h(
         "div",
