@@ -2140,7 +2140,9 @@
         const update = () => {
           current = Math.floor(Date.now() / 1000);
           display.textContent = current.toString();
-          readable.textContent = new Date().toLocaleString();
+          readable.textContent = new Date()
+            .toLocaleString()
+            .replace(/\s?([AP])M\b/, (_, x) => ` ${x.toLowerCase()}m`);
         };
 
         update();
