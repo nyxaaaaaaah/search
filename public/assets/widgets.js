@@ -5502,7 +5502,6 @@ reg({
     ),
   build: () => {
     const rows = [
-      ["user agent", navigator.userAgent],
       ["platform", navigator.platform || "—"],
       ["language", navigator.language],
       ["cores", navigator.hardwareConcurrency || "—"],
@@ -5515,19 +5514,22 @@ reg({
       null,
       h(
         "div",
-        { class: "w-calc-out" },
-        ...rows.map(([l, v]) =>
-          h(
-            "div",
-            { class: "w-stat" },
-            h("span", { class: "w-stat-label" }, l),
+        { class: "w-ua" },
+        h(
+          "div",
+          { class: "w-ua-agent" },
+          h("div", { class: "w-ua-label" }, "user agent"),
+          h("div", { class: "w-ua-value" }, navigator.userAgent),
+        ),
+        h(
+          "div",
+          { class: "w-calc-out" },
+          ...rows.map(([l, v]) =>
             h(
-              "span",
-              {
-                class: "w-stat-val w-mono",
-                style: { fontSize: "0.85rem", textAlign: "right" },
-              },
-              v,
+              "div",
+              { class: "w-stat" },
+              h("span", { class: "w-stat-label" }, l),
+              h("span", { class: "w-stat-val" }, v),
             ),
           ),
         ),
@@ -5543,13 +5545,25 @@ reg({
       q.trim(),
     ),
   build: () => {
-    const out = h("div", { class: "w-calc-out" });
-    const run = () =>
-      out.replaceChildren(
+    const hero = h("span", { class: "w-screen-num" });
+    const grid = h("div", { class: "w-calc-out" });
+    const out = h(
+      "div",
+      { class: "w-screen" },
+      h(
+        "div",
+        { class: "w-screen-hero" },
+        hero,
+        h("span", { class: "w-screen-cap" }, "viewport"),
+      ),
+      grid,
+    );
+    const run = () => {
+      hero.textContent = `${window.innerWidth} × ${window.innerHeight}`;
+      grid.replaceChildren(
         ...[
           ["screen", `${screen.width} × ${screen.height}`],
           ["available", `${screen.availWidth} × ${screen.availHeight}`],
-          ["viewport", `${window.innerWidth} × ${window.innerHeight}`],
           ["pixel ratio", window.devicePixelRatio],
           ["color depth", `${screen.colorDepth}-bit`],
         ].map(([l, v]) =>
@@ -5557,10 +5571,11 @@ reg({
             "div",
             { class: "w-stat" },
             h("span", { class: "w-stat-label" }, l),
-            h("span", { class: "w-stat-val w-mono" }, v),
+            h("span", { class: "w-stat-val" }, v),
           ),
         ),
       );
+    };
     run();
     const onResize = () => {
       if (!out.isConnected)
@@ -5944,6 +5959,7 @@ reg({
     const input = h("input", {
       class: "w-input",
       placeholder: "search emoji…",
+      "aria-label": "search emoji",
       value: term,
     });
     const grid = h("div", { class: "w-emoji-grid" });
@@ -5953,10 +5969,37 @@ reg({
         t ? EMOJI.filter(([c, k]) => k.includes(t) || c === t) : EMOJI
       ).slice(0, 72);
       grid.replaceChildren();
-      if (!list.length)
-        return grid.append(h("div", { class: "w-sub" }, "no matches"));
-      for (const [c] of list) {
-        const b = h("button", { class: "w-emoji", title: "copy" }, c);
+      if (!list.length) {
+        const reset = h(
+          "button",
+          { class: "w-btn", type: "button" },
+          "clear search",
+        );
+        reset.onclick = () => {
+          input.value = "";
+          input.focus();
+          run();
+        };
+        return grid.append(
+          h(
+            "div",
+            { class: "w-emoji-empty" },
+            h("span", null, "no emoji here match that search"),
+            reset,
+          ),
+        );
+      }
+      for (const [c, k] of list) {
+        const b = h(
+          "button",
+          {
+            class: "w-emoji",
+            type: "button",
+            title: k,
+            "aria-label": `copy ${k}`,
+          },
+          c,
+        );
         b.onclick = () => {
           navigator.clipboard?.writeText(c);
           b.classList.add("copied");
@@ -6002,7 +6045,16 @@ reg({
     ];
     const grid = h("div", { class: "w-kaomoji-grid" });
     for (const k of list) {
-      const b = h("button", { class: "w-kaomoji w-mono", title: "copy" }, k);
+      const b = h(
+        "button",
+        {
+          class: "w-kaomoji",
+          type: "button",
+          title: "copy",
+          "aria-label": "copy kaomoji",
+        },
+        k,
+      );
       b.onclick = () => {
         navigator.clipboard?.writeText(k);
         b.classList.add("copied");
@@ -7609,7 +7661,15 @@ reg({
     const go = h("button", { class: "w-btn primary" }, "convert");
     const status = h("div", { class: "w-conv-status" });
     const bar = h("i");
-    const barWrap = h("div", { class: "w-conv-bar" }, bar);
+    const barWrap = h(
+      "div",
+      {
+        class: "w-conv-bar",
+        role: "progressbar",
+        "aria-label": "conversion progress",
+      },
+      bar,
+    );
     const result = h("div", { class: "w-conv-result" });
 
     const fill = () => {
@@ -7656,7 +7716,10 @@ reg({
       e.preventDefault();
       drop.classList.add("over");
     };
-    drop.ondragleave = () => drop.classList.remove("over");
+    drop.ondragleave = (e) => {
+      if (drop.contains(e.relatedTarget)) return;
+      drop.classList.remove("over");
+    };
     drop.ondrop = (e) => {
       e.preventDefault();
       drop.classList.remove("over");
@@ -7673,7 +7736,7 @@ reg({
       go.classList.add("primary");
       result.replaceChildren();
       status.classList.remove("err");
-      bar.style.width = "0%";
+      bar.style.setProperty("--p", "0");
       barWrap.classList.add("on", "indet");
       const target = toSel.value;
 
@@ -7684,7 +7747,7 @@ reg({
           },
           onProgress: (p) => {
             barWrap.classList.remove("indet");
-            bar.style.width = `${Math.round(p * 100)}%`;
+            bar.style.setProperty("--p", String(Math.min(1, Math.max(0, p))));
           },
         });
         const name = `${file.name.replace(/\.[^.]+$/, "")}.${outExtFor(target)}`;
@@ -7784,6 +7847,7 @@ reg({
     const toSel = h("select", { class: "w-select w-cur-sel" });
     const swap = h("button", {
       class: "w-cur-swap",
+      type: "button",
       title: "swap currencies",
       "aria-label": "swap currencies",
       html: SWAP,
@@ -7808,17 +7872,22 @@ reg({
       const rate = rates[tt] / rates[f];
       lastValue = a * rate;
       result.replaceChildren(
-        h("span", { class: "w-cur-out" }, `${fmtAmt(lastValue)} ${tt}`),
+        h("span", { class: "w-cur-out" }, fmtAmt(lastValue)),
+        " ",
+        h("span", { class: "w-cur-code" }, tt),
       );
       rateLine.textContent = `${fmtAmt(a)} ${f} · 1 ${f} = ${fmtRate(rate)} ${tt}`;
     };
 
     amt.oninput = recompute;
     fromSel.onchange = toSel.onchange = recompute;
+    let turns = 0;
     swap.onclick = () => {
       const f = fromSel.value;
       fromSel.value = toSel.value;
       toSel.value = f;
+      turns += 1;
+      swap.style.setProperty("--turn", `${turns * 180}deg`);
       recompute();
     };
 
@@ -7852,14 +7921,31 @@ reg({
     return card(
       "currency converter",
       "live mid-market rates",
-      h("div", { class: "w-cur-row" }, amt, fromSel, swap, toSel),
       h(
         "div",
-        { class: "w-out-row w-cur-out-row" },
-        result,
-        copyBtn(
-          () => (lastValue ? String(+lastValue.toFixed(6)) : ""),
-          "copy result",
+        { class: "w-cur-duo" },
+        h(
+          "div",
+          { class: "w-cur-side" },
+          h("div", { class: "w-cur-side-label" }, "from"),
+          amt,
+          fromSel,
+        ),
+        swap,
+        h(
+          "div",
+          { class: "w-cur-side" },
+          h("div", { class: "w-cur-side-label" }, "to"),
+          h(
+            "div",
+            { class: "w-out-row w-cur-out-row" },
+            result,
+            copyBtn(
+              () => (lastValue ? String(+lastValue.toFixed(6)) : ""),
+              "copy result",
+            ),
+          ),
+          toSel,
         ),
       ),
       rateLine,
@@ -7923,10 +8009,12 @@ reg({
 
     const swap = h("button", {
       class: "w-tr-swap",
+      type: "button",
       title: "swap languages",
       "aria-label": "swap languages",
       html: SWAP,
     });
+    const duo = h("div", { class: "w-tr-duo" });
     const syncSwap = () => {
       swap.disabled = slP.value === "auto" && !slP.detected;
     };
@@ -8081,6 +8169,7 @@ reg({
       go();
     };
 
+    let turns = 0;
     swap.onclick = () => {
       const from = slP.value === "auto" ? slP.detected : slP.value;
       if (!from) return;
@@ -8089,12 +8178,18 @@ reg({
       tlP.value = from;
       if (!out.classList.contains("err") && !out.querySelector(".w-tr-ph"))
         src.value = out.textContent.slice(0, 5000);
+      turns += 1;
+      swap.style.setProperty("--turn", `${turns * 180}deg`);
+      duo.classList.remove("swapping");
+      duo.getBoundingClientRect();
+      duo.classList.add("swapping");
       syncCount();
       run();
     };
 
     const clear = h("button", {
       class: "w-copy",
+      type: "button",
       title: "clear",
       "aria-label": "clear text",
       html: CLEAR,
@@ -8105,6 +8200,44 @@ reg({
       src.focus();
       run();
     };
+
+    duo.append(
+      h(
+        "div",
+        { class: "w-tr-pane" },
+        src,
+        srcTl,
+        dym,
+        h(
+          "div",
+          { class: "w-tr-pane-foot" },
+          speakButton(
+            () => src.value,
+            () => (slP.value === "auto" ? slP.detected : slP.value),
+            "w-copy",
+          ),
+          count,
+          clear,
+        ),
+      ),
+      h(
+        "div",
+        { class: "w-tr-pane" },
+        out,
+        outTl,
+        h(
+          "div",
+          { class: "w-tr-pane-foot" },
+          speakButton(
+            () => (out.querySelector(".w-tr-ph") ? "" : out.textContent),
+            () => tlP.value,
+            "w-copy",
+          ),
+          status,
+          copyBtn(() => (out.querySelector(".w-tr-ph") ? "" : out.textContent)),
+        ),
+      ),
+    );
 
     setOut(null);
     syncCount();
@@ -8130,47 +8263,7 @@ reg({
           swap,
           h("div", { class: "w-tr-slot" }, tlP.el),
         ),
-        h(
-          "div",
-          { class: "w-tr-duo" },
-          h(
-            "div",
-            { class: "w-tr-pane" },
-            src,
-            srcTl,
-            dym,
-            h(
-              "div",
-              { class: "w-tr-pane-foot" },
-              speakButton(
-                () => src.value,
-                () => (slP.value === "auto" ? slP.detected : slP.value),
-                "w-copy",
-              ),
-              count,
-              clear,
-            ),
-          ),
-          h(
-            "div",
-            { class: "w-tr-pane" },
-            out,
-            outTl,
-            h(
-              "div",
-              { class: "w-tr-pane-foot" },
-              speakButton(
-                () => (out.querySelector(".w-tr-ph") ? "" : out.textContent),
-                () => tlP.value,
-                "w-copy",
-              ),
-              status,
-              copyBtn(() =>
-                out.querySelector(".w-tr-ph") ? "" : out.textContent,
-              ),
-            ),
-          ),
-        ),
+        duo,
         alts,
         dict,
       ),
