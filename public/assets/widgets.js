@@ -3973,31 +3973,52 @@ reg({
   build: ({ ts }) => {
     const ms = ts > 1e12 ? ts : ts * 1000;
     const d = new Date(ms);
+    const local = d.toLocaleString();
+    const days = Math.round((d - Date.now()) / 86400000);
+    const rel =
+      days === 0
+        ? "today"
+        : days > 0
+          ? `in ${days} day${days === 1 ? "" : "s"}`
+          : `${-days} day${days === -1 ? "" : "s"} ago`;
+    const hero = h(
+      "div",
+      { class: "w-ts-hero" },
+      h("div", { class: "w-ts-big" }, local),
+      h(
+        "div",
+        { class: "w-ts-meta" },
+        h(
+          "div",
+          { class: "w-ts-chips" },
+          h("span", { class: "w-ts-chip" }, String(ts)),
+          h(
+            "span",
+            { class: "w-ts-chip" },
+            ts > 1e12 ? "milliseconds" : "seconds",
+          ),
+        ),
+        copyBtn(() => local, "copy local time"),
+      ),
+    );
     return card(
       "unix timestamp",
       null,
+      hero,
       h(
         "div",
-        { class: "w-calc-out" },
+        { class: "w-ts-rows" },
         ...[
-          ["local", d.toLocaleString()],
-          ["utc", d.toUTCString()],
-          ["iso 8601", d.toISOString()],
-          [
-            "relative",
-            `${Math.round((d - Date.now()) / 86400000)} days from now`,
-          ],
-        ].map(([l, v]) =>
+          ["utc", d.toUTCString(), true],
+          ["iso 8601", d.toISOString(), true],
+          ["relative", rel, false],
+        ].map(([l, v, mono]) =>
           h(
             "div",
-            { class: "w-stat" },
-            h("span", { class: "w-stat-label" }, l),
-            h(
-              "span",
-              { class: "w-row" },
-              h("span", { class: "w-stat-val w-mono" }, v),
-              copyBtn(() => v),
-            ),
+            { class: "w-ts-row" },
+            h("span", { class: "w-ts-key" }, l),
+            h("span", { class: `w-ts-val${mono ? " w-mono" : ""}` }, v),
+            copyBtn(() => v),
           ),
         ),
       ),
@@ -4060,13 +4081,32 @@ reg({
       running = false,
       iv = null;
     const durations = { focus: 25 * 60, break: 5 * 60 };
-    const disp = h("div", { class: "w-timer-disp w-mono" });
-    const modeLabel = h("div", { class: "w-sub w-center" });
+    const digits = odometer("w-pomo-digits");
+    const disp = h("div", { class: "w-pomo-disp" }, digits.el);
+    const modeLabel = h("span", { class: "w-pomo-chip" });
+    const fill = h("i", { class: "w-pomo-fill" });
+    const bar = h("div", { class: "w-pomo-bar", "aria-hidden": "true" }, fill);
+    const hero = h(
+      "div",
+      { class: "w-pomo-hero" },
+      disp,
+      bar,
+      h("div", { class: "w-pomo-meta" }, modeLabel),
+    );
     const fmt = (s) =>
-      `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+      `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
     const upd = () => {
-      disp.textContent = fmt(remaining);
+      digits.set(fmt(remaining));
       modeLabel.textContent = mode === "focus" ? "focus time" : "break time";
+      modeLabel.dataset.mode = mode;
+      fill.dataset.mode = mode;
+      fill.style.scale = `${Math.max(0, 1 - remaining / durations[mode])} 1`;
+    };
+    const snap = () => {
+      fill.style.transition = "none";
+      upd();
+      void fill.offsetWidth;
+      fill.style.transition = "";
     };
     const startBtn = h("button", { class: "w-btn primary" }, "start");
     const tick = () => {
@@ -4075,6 +4115,10 @@ reg({
       if (remaining < 0) {
         mode = mode === "focus" ? "break" : "focus";
         remaining = durations[mode];
+        snap();
+        modeLabel.classList.remove("flip");
+        void modeLabel.offsetWidth;
+        modeLabel.classList.add("flip");
         const o = audio().createOscillator(),
           g = audio().createGain();
         o.frequency.value = 880;
@@ -4102,15 +4146,14 @@ reg({
         mode = "focus";
         remaining = durations.focus;
         startBtn.textContent = "start";
-        upd();
+        snap();
       },
     });
     upd();
     return card(
       "pomodoro",
       "25 min focus / 5 min break",
-      disp,
-      modeLabel,
+      hero,
       h("div", { class: "w-btn-row" }, startBtn, resetBtn),
     );
   },
@@ -4122,21 +4165,42 @@ reg({
     /^(?:countdown\s+to\s+)?new\s*year(?:\s+countdown)?$/i.test(q.trim()),
   build: () => {
     const target = new Date(new Date().getFullYear() + 1, 0, 1);
-    const disp = h("div", { class: "w-timer-disp w-mono" });
+    const cells = ["days", "hours", "minutes", "seconds"].map((unit) => {
+      const od = odometer("w-nyc-num");
+      return {
+        od,
+        el: h(
+          "div",
+          { class: "w-nyc-cell" },
+          od.el,
+          h("span", { class: "w-nyc-unit" }, unit),
+        ),
+      };
+    });
+    const disp = h("div", { class: "w-nyc-grid" }, ...cells.map((c) => c.el));
+    const pad = (n) => String(n).padStart(2, "0");
+    let iv = null;
     const tick = () => {
-      if (!disp.isConnected) return clearInterval(iv);
-      let s = Math.floor((target - Date.now()) / 1000);
+      if (iv && !disp.isConnected) return clearInterval(iv);
+      let s = Math.max(0, Math.floor((target - Date.now()) / 1000));
       const d = Math.floor(s / 86400);
       s %= 86400;
       const hh = Math.floor(s / 3600);
       s %= 3600;
       const mm = Math.floor(s / 60);
       s %= 60;
-      disp.textContent = `${d}d ${hh}h ${mm}m ${s}s`;
+      const vals = [String(d), pad(hh), pad(mm), pad(s)];
+      cells.forEach((c, i) => {
+        c.od.set(vals[i]);
+      });
     };
-    const iv = setInterval(tick, 1000);
     tick();
-    return card(`countdown to ${target.getFullYear()}`, null, disp);
+    iv = setInterval(tick, 1000);
+    return card(
+      `countdown to ${target.getFullYear()}`,
+      "midnight on 1 january, your local time",
+      disp,
+    );
   },
 });
 
@@ -4153,16 +4217,37 @@ reg({
       ["breathe out", 4000],
       ["hold", 4000],
     ];
-    const circle = h("div", { class: "w-breath-circle" });
-    const label = h("div", { class: "w-breath-label" }, "tap start");
+    const circle = h("div", {
+      class: "w-breath-circle",
+      "aria-hidden": "true",
+    });
+    const label = h(
+      "div",
+      { class: "w-breath-label", role: "status" },
+      "press start",
+    );
     let i = 0,
       to = null,
       running = false;
+    const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const say = (text) => {
+      if (label.textContent === text) return;
+      label.textContent = text;
+      if (calm()) return;
+      label.animate(
+        [
+          { opacity: 0, filter: "blur(4px)", transform: "translateY(4px)" },
+          { opacity: 1, filter: "blur(0)", transform: "none" },
+        ],
+        { duration: 320, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
+      );
+    };
     const step = () => {
       if (!circle.isConnected) return clearTimeout(to);
       const [text, dur] = phases[i % phases.length];
-      label.textContent = text;
+      say(text);
       circle.style.transitionDuration = `${dur}ms`;
+      circle.dataset.phase = i % 4 === 0 ? "in" : i % 4 === 2 ? "out" : "hold";
       circle.classList.toggle(
         "big",
         text === "breathe in" || (text === "hold" && i % 4 === 1),
@@ -4180,7 +4265,8 @@ reg({
       } else {
         clearTimeout(to);
         circle.classList.remove("big");
-        label.textContent = "tap start";
+        delete circle.dataset.phase;
+        say("press start");
       }
     };
     return card(
@@ -4204,31 +4290,45 @@ reg({
       rows: "5",
       placeholder: "type or paste text…",
     });
-    const out = h("div", { class: "w-calc-out" });
+    const big = h("span", { class: "w-wc-num" }, "0");
+    const unit = h("span", { class: "w-wc-unit" }, "words");
+    const hero = h("div", { class: "w-wc-hero" }, big, unit);
+    const out = h("div", { class: "w-wc-grid" });
+    const tiles = ["characters", "lines", "sentences", "reading time"].map(
+      (l) => {
+        const v = h("span", { class: "w-wc-tile-val" }, "0");
+        out.append(
+          h(
+            "div",
+            { class: "w-wc-tile" },
+            h("span", { class: "w-wc-tile-key" }, l),
+            v,
+          ),
+        );
+        return v;
+      },
+    );
     const run = () => {
       const t = ta.value;
       const words = (t.match(/\S+/g) || []).length;
       const lines = t ? t.split("\n").length : 0;
-      out.replaceChildren(
-        ...[
-          ["characters", t.length],
-          ["words", words],
-          ["lines", lines],
-          ["sentences", (t.match(/[.!?]+/g) || []).length],
-          ["reading time", `${Math.ceil(words / 200)} min`],
-        ].map(([l, v]) =>
-          h(
-            "div",
-            { class: "w-stat" },
-            h("span", { class: "w-stat-label" }, l),
-            h("span", { class: "w-stat-val" }, v),
-          ),
-        ),
-      );
+      big.textContent = words.toLocaleString();
+      unit.textContent = words === 1 ? "word" : "words";
+      hero.classList.toggle("empty", !t);
+      out.classList.toggle("empty", !t);
+      const vals = [
+        t.length.toLocaleString(),
+        lines.toLocaleString(),
+        String((t.match(/[.!?]+/g) || []).length),
+        `${Math.ceil(words / 200)} min`,
+      ];
+      tiles.forEach((el, i) => {
+        if (el.textContent !== vals[i]) el.textContent = vals[i];
+      });
     };
     ta.oninput = run;
     run();
-    return card("word counter", null, ta, out);
+    return card("word counter", null, hero, ta, out);
   },
 });
 
@@ -7241,7 +7341,7 @@ reg({
   build: () => {
     const mode = h(
       "select",
-      { class: "w-select" },
+      { class: "w-select", "aria-label": "sleep calculator mode" },
       h("option", { value: "wake" }, "I want to wake up at…"),
       h("option", { value: "bed" }, "I'm going to bed now"),
     );
@@ -7249,11 +7349,26 @@ reg({
       class: "w-input w-num",
       type: "time",
       value: "07:00",
+      "aria-label": "wake-up time",
     });
     const timeWrap = h("label", { class: "w-label" }, timeIn);
-    const out = h("div", { class: "w-calc-out" });
+    const hint = h("div", { class: "w-sleep-hint" });
+    const out = h("div", { class: "w-sleep-list" });
     const fmt = (d) =>
       d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const row = (c, d, best) =>
+      h(
+        "div",
+        { class: `w-sleep-row${best ? " best" : ""}` },
+        h(
+          "span",
+          { class: "w-sleep-key" },
+          h("span", { class: "w-sleep-cycles" }, `${c} cycles`),
+          h("span", { class: "w-sleep-len" }, `${(c * 1.5).toFixed(1)}h`),
+          best && h("span", { class: "w-sleep-best" }, "recommended"),
+        ),
+        h("span", { class: "w-sleep-time" }, fmt(d)),
+      );
     const run = () => {
       out.replaceChildren();
       const cycle = 90,
@@ -7264,49 +7379,23 @@ reg({
         const wake = new Date();
         wake.setHours(hh, mm, 0, 0);
         if (wake <= new Date()) wake.setDate(wake.getDate() + 1);
-        const times = [6, 5, 4].map((c) => {
-          const d = new Date(wake.getTime() - (c * cycle + fallAsleep) * 60000);
-          return [c, d];
-        });
-        out.append(
-          h(
-            "div",
-            { class: "w-sub" },
-            "fall asleep at one of these for full cycles:",
-          ),
-        );
-        for (const [c, d] of times)
+        hint.textContent = "fall asleep at one of these for full cycles:";
+        for (const c of [6, 5, 4])
           out.append(
-            h(
-              "div",
-              { class: "w-stat" },
-              h(
-                "span",
-                { class: "w-stat-label" },
-                `${c} cycles (${(c * 1.5).toFixed(1)}h)`,
-              ),
-              h("span", { class: "w-stat-val w-mono" }, fmt(d)),
+            row(
+              c,
+              new Date(wake.getTime() - (c * cycle + fallAsleep) * 60000),
+              c === 6,
             ),
           );
       } else {
         timeWrap.style.display = "none";
         const now = Date.now();
-        out.append(h("div", { class: "w-sub" }, "wake up at one of these:"));
-        for (const c of [6, 5, 4]) {
-          const d = new Date(now + (c * cycle + fallAsleep) * 60000);
+        hint.textContent = "wake up at one of these:";
+        for (const c of [6, 5, 4])
           out.append(
-            h(
-              "div",
-              { class: "w-stat" },
-              h(
-                "span",
-                { class: "w-stat-label" },
-                `${c} cycles (${(c * 1.5).toFixed(1)}h)`,
-              ),
-              h("span", { class: "w-stat-val w-mono" }, fmt(d)),
-            ),
+            row(c, new Date(now + (c * cycle + fallAsleep) * 60000), c === 6),
           );
-        }
       }
     };
     mode.onchange = run;
@@ -7317,6 +7406,7 @@ reg({
       "based on 90-min sleep cycles",
       h("div", { class: "w-row" }, mode),
       timeWrap,
+      hint,
       out,
     );
   },
