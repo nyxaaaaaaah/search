@@ -8022,10 +8022,6 @@ reg({
     let ctrl, timer;
     let flipped = false;
 
-    const syncLink = () => {
-      link.href = `/translate?sl=${encodeURIComponent(slP.value)}&tl=${encodeURIComponent(tlP.value)}&text=${encodeURIComponent(src.value.slice(0, 2000))}`;
-    };
-
     const single = (s) =>
       /^\p{L}[\p{L}'’-]*$/u.test(s.trim()) && s.trim().length <= 30;
 
