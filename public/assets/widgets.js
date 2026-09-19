@@ -3392,6 +3392,62 @@ const CLOCK_FILLER = new Set([
   "real",
 ]);
 
+const odometer = (cls) => {
+  const el = h("span", { class: cls ? `w-od ${cls}` : "w-od" });
+  const live = h("span", { class: "w-sr" });
+  const reels = h("span", { class: "w-od-in", "aria-hidden": "true" });
+  el.append(live, reels);
+  const at = (i) => `translateY(${(-i * 100) / 20}%)`;
+  const jump = (reel, i) => {
+    reel.style.transition = "none";
+    reel.style.transform = at(i);
+    void reel.offsetWidth;
+    reel.style.transition = "";
+  };
+  let shape = null;
+  const set = (str) => {
+    const next = [...str].map((c) => (c >= "0" && c <= "9" ? "#" : c)).join("");
+    const fresh = next !== shape;
+    live.textContent = str;
+    if (fresh) {
+      shape = next;
+      reels.replaceChildren(
+        ...[...next].map((c) =>
+          c === "#"
+            ? h(
+                "span",
+                { class: "w-od-d" },
+                h(
+                  "span",
+                  { class: "w-od-r" },
+                  Array.from({ length: 20 }, (_, i) => h("span", null, i % 10)),
+                ),
+              )
+            : h("span", { class: "w-od-s" }, c),
+        ),
+      );
+    }
+    [...str].forEach((c, i) => {
+      const cell = reels.children[i];
+      if (!cell || !(c >= "0" && c <= "9") || cell.dataset.v === c) return;
+      const reel = cell.firstChild;
+      const to = +c;
+      const parked = cell.dataset.v ? +cell.dataset.i : null;
+      cell.dataset.v = c;
+      if (parked == null) {
+        cell.dataset.i = to;
+        jump(reel, to);
+        return;
+      }
+      if (parked > 9) jump(reel, parked - 10);
+      const up = to < parked % 10 ? to + 10 : to;
+      cell.dataset.i = up;
+      reel.style.transform = at(up);
+    });
+  };
+  return { el, set };
+};
+
 let _tzKeys;
 
 reg({
@@ -3527,62 +3583,47 @@ reg({
       timeZoneName: "short",
     });
 
-    const dial = h("div", {
-      class: "w-clock-dial-wrap",
-      html: `<svg viewBox="0 0 100 100" class="w-clock-dial" aria-hidden="true">
-<circle class="w-clock-face" cx="50" cy="50" r="47"/>
-${Array.from(
-  { length: 12 },
-  (_, i) =>
-    `<line class="w-clock-tick${i % 3 === 0 ? " major" : ""}" x1="50" y1="${i % 3 === 0 ? 7 : 8}" x2="50" y2="${i % 3 === 0 ? 15 : 13}" transform="rotate(${i * 30} 50 50)"/>`,
-).join("\n")}
-<line class="w-clock-hand hour" x1="50" y1="57" x2="50" y2="29"/>
-<line class="w-clock-hand min" x1="50" y1="59" x2="50" y2="17"/>
-<line class="w-clock-hand sec" x1="50" y1="62" x2="50" y2="13"/>
-<circle class="w-clock-pin" cx="50" cy="50" r="2.6"/>
-</svg>`,
-    });
-    const hourHand = dial.querySelector(".hour");
-    const minHand = dial.querySelector(".min");
-    const secHand = dial.querySelector(".sec");
-
-    const big = h("span", { class: "w-clock-digits" });
-    const secs = h("span", { class: "w-clock-secs w-mono" });
-    const ampm = h("span", { class: "w-clock-ampm" });
-    const sub = h("div", { class: "w-clock-sub" });
-    const zone = h("div", { class: "w-clock-zone w-mono" });
-    const diff = h("div", { class: "w-clock-diff" });
-
-    const setChars = (el, str) => {
-      if (el.dataset.v === str) return;
-      const prev = el.dataset.v || "";
-      el.dataset.v = str;
-      if (el.childElementCount !== str.length) {
-        el.replaceChildren(
-          ...[...str].map((c) => h("span", { class: "w-clock-ch" }, c)),
-        );
-        return;
-      }
-      [...str].forEach((c, i) => {
-        if (prev[i] === c) return;
-        const sp = el.children[i];
-        sp.textContent = c;
-        sp.classList.remove("tick");
-        void sp.offsetWidth;
-        sp.classList.add("tick");
-      });
-    };
-
     const clock = (hour, minute, second) => {
       const hh = h12 ? hour % 12 || 12 : hour;
       return `${h12 ? hh : String(hh).padStart(2, "0")}:${minute}${second == null ? "" : `:${second}`}${h12 ? (hour < 12 ? " am" : " pm") : ""}`;
     };
 
+    const isTime = kind === "time";
+    const big = isTime
+      ? odometer("w-clock-digits")
+      : (() => {
+          const el = h("span", { class: "w-clock-digits" });
+          return {
+            el,
+            set: (v) => {
+              if (el.textContent !== v) el.textContent = v;
+            },
+          };
+        })();
+    const secs = odometer("w-clock-secs");
+    const ampm = h("span", { class: "w-clock-ampm" });
+    const sub = h("div", { class: "w-clock-sub" });
+    const zone = h("div", { class: "w-clock-zone" });
+    const diff = h("div", { class: "w-clock-diff" });
+
+    const hero = h(
+      "div",
+      { class: "w-clock-hero" },
+      h(
+        "div",
+        { class: "w-clock-big" },
+        big.el,
+        isTime && h("div", { class: "w-clock-tail" }, secs.el, ampm),
+      ),
+      sub,
+      zone,
+    );
+
     let offMin = 0;
     let copyText = "";
     let iv = null;
     const tick = () => {
-      if (iv && !dial.isConnected) return clearInterval(iv);
+      if (iv && !hero.isConnected) return clearInterval(iv);
       const now = new Date();
       const p = {};
       for (const { type, value } of partsF.formatToParts(now)) p[type] = value;
@@ -3595,18 +3636,14 @@ ${Array.from(
           60000,
       );
       const dateStr = dateF.format(now);
-      const timeStr = clock(hour, minute);
 
-      if (kind === "time") {
-        setChars(big, timeStr.replace(/ [ap]m$/, ""));
-        setChars(secs, `:${second}`);
+      if (isTime) {
+        big.set(clock(hour, minute).replace(/ [ap]m$/, ""));
+        secs.set(second);
         ampm.textContent = h12 ? (hour < 12 ? "am" : "pm") : "";
         sub.textContent = dateStr;
       } else {
-        secs.textContent = "";
-        ampm.textContent = "";
-        setChars(
-          big,
+        big.set(
           kind === "year"
             ? p.year
             : kind === "month"
@@ -3630,13 +3667,17 @@ ${Array.from(
       const abbr = abbrF
         .formatToParts(now)
         .find((x) => x.type === "timeZoneName")?.value;
-      zone.textContent = [
+      const chips = [
         tz.replaceAll("_", " "),
         abbr && !/^(?:GMT|UTC)/.test(abbr) ? abbr : null,
         offStr,
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      ].filter(Boolean);
+      if (zone.dataset.v !== chips.join("|")) {
+        zone.dataset.v = chips.join("|");
+        zone.replaceChildren(
+          ...chips.map((t) => h("span", { class: "w-clock-chip" }, t)),
+        );
+      }
 
       const localOff = -now.getTimezoneOffset();
       const delta = offMin - localOff;
@@ -3674,29 +3715,6 @@ ${Array.from(
       copyText = `${clock(hour, minute, second)} · ${dateStr} · ${tz}`;
     };
 
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const hands = () => {
-      const z = new Date(Date.now() + offMin * 60000);
-      const s = reduced
-        ? z.getUTCSeconds()
-        : z.getUTCSeconds() + z.getUTCMilliseconds() / 1000;
-      const m = z.getUTCMinutes() + s / 60;
-      const hr = (z.getUTCHours() % 12) + m / 60;
-      secHand.setAttribute("transform", `rotate(${s * 6} 50 50)`);
-      minHand.setAttribute("transform", `rotate(${m * 6} 50 50)`);
-      hourHand.setAttribute("transform", `rotate(${hr * 30} 50 50)`);
-    };
-
-    let last = 0;
-    const frame = (t) => {
-      if (!dial.isConnected) return;
-      if (t - last > 32) {
-        last = t;
-        hands();
-      }
-      requestAnimationFrame(frame);
-    };
-
     const unit = h("button", {
       class: "w-clock-unit",
       title: "toggle 12/24 hour",
@@ -3704,19 +3722,13 @@ ${Array.from(
         h12 = !h12;
         localStorage.setItem("ms-clock-h12", h12 ? "1" : "0");
         unit.textContent = h12 ? "24h" : "12h";
-        big.dataset.v = "";
         tick();
       },
     });
     unit.textContent = h12 ? "24h" : "12h";
 
     tick();
-    hands();
-    iv = setInterval(() => {
-      tick();
-      if (reduced) hands();
-    }, 1000);
-    if (!reduced) requestAnimationFrame(frame);
+    iv = setInterval(tick, 1000);
 
     const noun =
       kind === "year"
@@ -3729,18 +3741,7 @@ ${Array.from(
     return card(
       place ? `${noun} in ${place}` : `current ${noun}`,
       null,
-      h(
-        "div",
-        { class: "w-clock-hero" },
-        dial,
-        h(
-          "div",
-          { class: "w-clock-main" },
-          h("div", { class: "w-clock-big w-mono" }, big, secs, ampm),
-          sub,
-          zone,
-        ),
-      ),
+      hero,
       h(
         "div",
         { class: "w-clock-foot" },
@@ -3909,28 +3910,32 @@ reg({
       ["Tokyo", "Asia/Tokyo"],
       ["Sydney", "Australia/Sydney"],
     ];
+    let started = false;
     const list = h("div", { class: "w-clock-list" });
     const rows = zones.map(([name, tz]) => {
-      const t = h("span", { class: "w-clock-time w-mono" });
+      const t = odometer("w-clock-time");
       list.append(
         h(
           "div",
           { class: "w-clock-row" },
           h("span", { class: "w-clock-city" }, name),
-          t,
+          t.el,
         ),
       );
       return { tz, t };
     });
     const tick = () => {
-      if (!list.isConnected) return clearInterval(iv);
+      if (started && !list.isConnected) return clearInterval(iv);
+      started = true;
       for (const { tz, t } of rows)
-        t.textContent = new Intl.DateTimeFormat("en-GB", {
-          timeZone: tz,
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }).format(new Date());
+        t.set(
+          new Intl.DateTimeFormat("en-GB", {
+            timeZone: tz,
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).format(new Date()),
+        );
     };
     const iv = setInterval(tick, 1000);
     tick();
@@ -7537,7 +7542,7 @@ reg({
       ctrl?.abort();
       const value = src.value.trim();
       clearExtras();
-      
+
       if (!value) {
         setOut(null);
         out.classList.remove("err");
@@ -7583,7 +7588,7 @@ reg({
         status.textContent = "";
         if (slP.value === "auto") slP.setDetected(det);
         syncSwap();
-        
+
         renderExtras(data);
         let word = null;
         if (langBase(tlP.value) === "en" && single(data.translatedText))
@@ -7640,7 +7645,7 @@ reg({
     setOut(null);
     syncCount();
     syncSwap();
-    
+
     if (text) run();
 
     return h(

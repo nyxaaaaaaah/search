@@ -34,6 +34,9 @@ const QUERIES = [
   "days until 2027-01-01",
   "unix timestamp 1700000000",
   "world clock",
+  "what time is it",
+  "time in moscow",
+  "time in tokyo",
   "pomodoro",
   "new year countdown",
   "box breathing",
@@ -194,6 +197,22 @@ const MOCK_RICH = [
     },
   },
   { subtype: "unixtimestamp", unixtimestamp: {} },
+  {
+    subtype: "timezones",
+    timezones: {
+      type: "time",
+      timezones: [
+        ["Moscow", "11:19 AM", "UTC+3"],
+        ["Kaliningrad", "10:19 AM", "UTC+2"],
+        ["Samara", "12:19 PM", "UTC+4"],
+        ["Yekaterinburg", "1:19 PM", "UTC+5"],
+        ["Omsk", "2:19 PM", "UTC+6"],
+        ["Novosibirsk", "3:19 PM", "UTC+7"],
+      ].map(([name, strftime, utc_diff]) => ({
+        converted_time: { strftime, utc_diff, city: { name } },
+      })),
+    },
+  },
 ];
 const MOCK = {
   results: { rich: MOCK_RICH, web: { results: [] }, mixed: [] },
@@ -215,6 +234,7 @@ async function searchJs() {
   let js = await Bun.file(`${ROOT}web/index.js`).text();
   js = js
     .replace("__results_template__", JSON.stringify(MOCK))
+    .replace("__kagi_enabled__", "false")
     .replace('"__results_pk__"', '"mock"')
     .replace('"__results_cl__"', '"mock"')
     .replaceAll("%%galileo_pass%%", "");

@@ -1937,7 +1937,15 @@
           tzEl.className = "rich-tz-item";
           const tzTime = document.createElement("span");
           tzTime.className = "rich-tz-time";
-          tzTime.textContent = tz.converted_time?.strftime || "";
+          const raw = (tz.converted_time?.strftime || "").trim();
+          const mer = raw.match(/\s+([AP]M)$/i);
+          tzTime.textContent = mer ? raw.slice(0, mer.index) : raw;
+          if (mer) {
+            const m = document.createElement("span");
+            m.className = "rich-tz-ampm";
+            m.textContent = mer[1].toLowerCase();
+            tzTime.append(m);
+          }
           const tzLoc = document.createElement("span");
           tzLoc.className = "rich-tz-location";
           tzLoc.textContent =
