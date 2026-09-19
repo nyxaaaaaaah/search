@@ -4240,8 +4240,12 @@ reg({
     ),
   build: () => {
     let taps = [];
-    const out = h("div", { class: "w-big w-mono" }, "tap →");
-    const pad = h("button", { class: "w-tap-pad" }, "tap");
+    const out = h("div", { class: "w-big w-tap-out" }, "tap →");
+    const pad = h(
+      "button",
+      { class: "w-tap-pad", type: "button" },
+      h("span", { class: "w-tap-pad-label" }, "tap"),
+    );
     pad.onclick = () => {
       const now = performance.now();
       taps = taps.filter((t) => now - t < 3000);
@@ -4257,7 +4261,7 @@ reg({
     return card(
       "bpm tapper",
       "tap the pad to the beat",
-      h("div", { class: "w-center" }, out),
+      h("div", { class: "w-tap-stage" }, out),
       pad,
       h(
         "div",
@@ -4290,7 +4294,10 @@ reg({
     const renderDots = () =>
       dots.replaceChildren(
         ...Array.from({ length: beats }, (_, i) =>
-          h("div", { class: `w-metro-dot${i === 0 ? " accent" : ""}` }),
+          h("div", {
+            class: `w-metro-dot${i === 0 ? " accent" : ""}`,
+            "aria-hidden": "true",
+          }),
         ),
       );
     const click = (accent) => {
@@ -4341,6 +4348,8 @@ reg({
     startBtn.onclick = () => {
       running = !running;
       startBtn.textContent = running ? "stop" : "start";
+      startBtn.classList.toggle("active", running);
+      dots.classList.toggle("running", running);
       if (running) {
         beat = 0;
         tick();
@@ -4372,8 +4381,13 @@ reg({
     return card(
       "metronome",
       null,
-      dots,
-      h("label", { class: "w-label" }, "tempo: ", bpmVal, " bpm", bpmIn),
+      h(
+        "div",
+        { class: "w-metro-stage" },
+        dots,
+        h("div", { class: "w-metro-tempo" }, bpmVal, h("span", null, "bpm")),
+      ),
+      h("label", { class: "w-label" }, "tempo", bpmIn),
       h(
         "div",
         { class: "w-row" },
@@ -4383,6 +4397,13 @@ reg({
     );
   },
 });
+
+const WAVE_PATHS = {
+  sine: "M0 20C10 6 20 6 30 20C40 34 50 34 60 20C70 6 80 6 90 20C100 34 110 34 120 20",
+  square: "M0 20V8h30v24h30V8h30v24h30V20",
+  sawtooth: "M0 32L60 8V32L120 8",
+  triangle: "M0 20L15 8L45 32L75 8L105 32L120 26",
+};
 
 reg({
   id: "tone",
@@ -4413,6 +4434,22 @@ reg({
         h("option", { value: w }, w),
       ),
     );
+    const scope = h("div", { class: "w-tone-scope" });
+    const drawScope = () => {
+      scope.innerHTML = `<svg viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true"><path d="${WAVE_PATHS[wave.value]}"/></svg>`;
+    };
+    drawScope();
+    const display = h(
+      "div",
+      { class: "w-tone-display" },
+      h(
+        "div",
+        { class: "w-tone-read" },
+        freqVal,
+        h("span", { class: "w-tone-unit" }, "hz"),
+      ),
+      scope,
+    );
     const btn = h("button", { class: "w-btn primary" }, "play");
     const stop = () => {
       if (osc) {
@@ -4429,6 +4466,7 @@ reg({
         stop();
         btn.textContent = "play";
         btn.classList.remove("active");
+        display.classList.remove("live");
         return;
       }
       const ac = audio();
@@ -4442,18 +4480,21 @@ reg({
       osc.start();
       btn.textContent = "stop";
       btn.classList.add("active");
+      display.classList.add("live");
     };
     freqIn.oninput = () => {
       freqVal.textContent = freqIn.value;
       if (osc) osc.frequency.value = +freqIn.value;
     };
     wave.onchange = () => {
+      drawScope();
       if (osc) osc.type = wave.value;
     };
     return card(
       "tone generator",
-      "⚠ check your volume",
-      h("label", { class: "w-label" }, "frequency: ", freqVal, " hz", freqIn),
+      "check your volume before playing",
+      display,
+      h("label", { class: "w-label" }, "frequency", freqIn),
       h(
         "div",
         { class: "w-row" },
@@ -4504,6 +4545,20 @@ reg({
       max: "100",
       value: "30",
     });
+    const tilt = (t) =>
+      kind === "white" ? 1 : kind === "pink" ? 1 - t * 0.55 : (1 - t) ** 2.2;
+    const bars = Array.from({ length: 40 }, (_, i) => {
+      const t = i / 39;
+      const hgt = Math.max(
+        0.06,
+        Math.min(1, tilt(t) * (0.55 + Math.random() * 0.45)),
+      );
+      return `<rect x="${(i * 5).toFixed(1)}" y="${(60 - hgt * 60).toFixed(1)}" width="3.6" height="${(hgt * 60).toFixed(1)}" rx="1.6" opacity="${(0.35 + hgt * 0.65).toFixed(2)}"/>`;
+    }).join("");
+    const display = h("div", {
+      class: `w-noise-viz ${kind}`,
+      html: `<svg viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true">${bars}</svg>`,
+    });
     const btn = h("button", { class: "w-btn primary" }, "play");
     btn.onclick = () => {
       if (src) {
@@ -4511,6 +4566,7 @@ reg({
         src = null;
         btn.textContent = "play";
         btn.classList.remove("active");
+        display.classList.remove("live");
         return;
       }
       const ac = audio();
@@ -4522,6 +4578,7 @@ reg({
       src.start();
       btn.textContent = "stop";
       btn.classList.add("active");
+      display.classList.add("live");
     };
     vol.oninput = () => {
       volVal.textContent = vol.value;
@@ -4530,7 +4587,14 @@ reg({
     return card(
       `${kind} noise`,
       "for focus or sleep",
-      h("label", { class: "w-label" }, "volume: ", volVal, vol),
+      display,
+      h(
+        "label",
+        { class: "w-label" },
+        "volume",
+        vol,
+        h("span", { class: "w-noise-vol" }, volVal, "%"),
+      ),
       h("div", { class: "w-btn-row" }, btn),
     );
   },
@@ -4541,20 +4605,22 @@ reg({
   match: (q) =>
     /^(?:piano|keyboard\s+piano|virtual\s+piano|play\s+piano)$/i.test(q.trim()),
   build: () => {
-    const keys = [
-      ["C", 60, 0],
-      ["C#", 61, 1],
-      ["D", 62, 0],
-      ["D#", 63, 1],
-      ["E", 64, 0],
-      ["F", 65, 0],
-      ["F#", 66, 1],
-      ["G", 67, 0],
-      ["G#", 68, 1],
-      ["A", 69, 0],
-      ["A#", 70, 1],
-      ["B", 71, 0],
-      ["C", 72, 0],
+    const whites = [
+      ["C", 60],
+      ["D", 62],
+      ["E", 64],
+      ["F", 65],
+      ["G", 67],
+      ["A", 69],
+      ["B", 71],
+      ["C", 72],
+    ];
+    const blacks = [
+      ["C#", 61, 0.65],
+      ["D#", 63, 1.75],
+      ["F#", 66, 3.6],
+      ["G#", 68, 4.7],
+      ["A#", 70, 5.8],
     ];
     const qwerty = {
       a: 60,
@@ -4571,7 +4637,11 @@ reg({
       j: 71,
       k: 72,
     };
-    const wrap = h("div", { class: "w-piano" });
+    const letterFor = Object.fromEntries(
+      Object.entries(qwerty).map(([k, m]) => [m, k]),
+    );
+    const bed = h("div", { class: "w-piano-bed" });
+    const wrap = h("div", { class: "w-piano" }, bed);
     const elByMidi = {};
     const play = (midi) => {
       const ac = audio();
@@ -4592,15 +4662,29 @@ reg({
         setTimeout(() => el.classList.remove("active"), 150);
       }
     };
-    for (const [name, midi, black] of keys) {
-      const k = h("div", {
-        class: `w-key${black ? " black" : ""}`,
-        title: name,
-      });
+    const mkKey = (name, midi, cls, props) => {
+      const k = h(
+        "button",
+        {
+          class: cls,
+          type: "button",
+          title: name,
+          "aria-label": `play ${name}`,
+          ...props,
+        },
+        h("span", { class: "w-key-cap" }, letterFor[midi] || ""),
+      );
       k.onpointerdown = () => play(midi);
       elByMidi[midi] = k;
-      wrap.append(k);
-    }
+      return k;
+    };
+    for (const [name, midi] of whites) bed.append(mkKey(name, midi, "w-key"));
+    for (const [name, midi, at] of blacks)
+      bed.append(
+        mkKey(name, midi, "w-key black", {
+          style: { left: `${at * 12.5}%` },
+        }),
+      );
     const onKey = (e) => {
       if (!wrap.isConnected)
         return document.removeEventListener("keydown", onKey);
@@ -4637,8 +4721,10 @@ reg({
       );
       const cells = [];
       for (let s = 0; s < STEPS; s++) {
-        const c = h("div", {
+        const c = h("button", {
           class: `w-seq-cell${s % 4 === 0 ? " group" : ""}`,
+          type: "button",
+          "aria-label": `${name} step ${s + 1}`,
         });
         c.onclick = () => {
           grid[ti][s] = !grid[ti][s];
@@ -4715,6 +4801,7 @@ reg({
     playBtn.onclick = () => {
       playing = !playing;
       playBtn.textContent = playing ? "stop" : "play";
+      playBtn.classList.toggle("active", playing);
       if (playing) {
         step = 0;
         iv = setInterval(tick, 60000 / bpm / 4);
@@ -4761,7 +4848,13 @@ reg({
       "drum machine",
       "click steps to build a beat",
       seq,
-      h("label", { class: "w-label" }, "tempo: ", bpmVal, bpmIn),
+      h(
+        "label",
+        { class: "w-label" },
+        "tempo",
+        bpmIn,
+        h("span", { class: "w-seq-tempo" }, bpmVal, " bpm"),
+      ),
       h("div", { class: "w-btn-row" }, playBtn, clear),
     );
   },
@@ -6635,32 +6728,54 @@ reg({
         null,
         h(
           "div",
-          { class: "w-sub" },
-          `no diagram for "${name}" — try C, G, Am, E7, Cmaj7…`,
+          { class: "w-chord-empty" },
+          h("div", null, `No diagram for "${name}" yet.`),
+          h(
+            "div",
+            { class: "w-sub" },
+            "Search a chord like C, G, Am, E7 or Cmaj7.",
+          ),
         ),
       );
-    const diagram = h("div", { class: "w-chord" });
-    const head = h("div", { class: "w-chord-head" });
-    for (const f of frets)
-      head.append(
-        h(
-          "span",
-          { class: "w-chord-marker" },
-          f < 0 ? "×" : f === 0 ? "○" : "",
-        ),
+    const X = (s) => 14 + s * 24;
+    const Y = (row) => 34 + (row - 0.5) * 30;
+    const parts = [];
+    for (let s = 0; s < 6; s++)
+      parts.push(
+        `<line class="w-chord-string" x1="${X(s)}" y1="34" x2="${X(s)}" y2="154" style="stroke-width:${(2.2 - s * 0.22).toFixed(2)}"/>`,
       );
-    diagram.append(head);
-    const gridBox = h("div", { class: "w-chord-grid" });
     for (let row = 1; row <= 4; row++)
-      for (let s = 0; s < 6; s++) {
-        const cell = h("div", { class: "w-chord-cell" });
-        if (frets[s] === row) cell.append(h("div", { class: "w-chord-dot" }));
-        gridBox.append(cell);
-      }
-    diagram.append(gridBox);
+      parts.push(
+        `<line class="w-chord-fret" x1="14" y1="${34 + row * 30}" x2="134" y2="${34 + row * 30}"/>`,
+      );
+    parts.push(`<line class="w-chord-nut" x1="14" y1="34" x2="134" y2="34"/>`);
+    for (let s = 0; s < 6; s++) {
+      const f = frets[s];
+      if (f === 0)
+        parts.push(`<circle class="w-chord-open" cx="${X(s)}" cy="20" r="5"/>`);
+      else if (f < 0)
+        parts.push(
+          `<path class="w-chord-mute" d="M${X(s) - 5} 15l10 10M${X(s) + 5} 15l-10 10"/>`,
+        );
+    }
+    let dotIdx = 0;
+    for (let s = 0; s < 6; s++) {
+      if (frets[s] <= 0) continue;
+      parts.push(
+        `<circle class="w-chord-dot" cx="${X(s)}" cy="${Y(frets[s])}" r="9" style="--i:${dotIdx++}"/>`,
+      );
+    }
+    for (const [s, label] of ["E", "A", "D", "G", "B", "e"].entries())
+      parts.push(
+        `<text class="w-chord-name" x="${X(s)}" y="172">${label}</text>`,
+      );
+    const diagram = h("div", {
+      class: "w-chord",
+      html: `<svg viewBox="0 0 148 180" role="img" aria-label="${norm} chord diagram">${parts.join("")}</svg>`,
+    });
     return card(
       `${norm} chord`,
-      "guitar · low E → high E",
+      "guitar · low E to high E",
       h("div", { class: "w-center" }, diagram),
     );
   },
