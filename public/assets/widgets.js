@@ -4865,7 +4865,7 @@ reg({
       t0 = 0,
       to = null;
     const pad = h("div", { class: "w-react-pad" }, "click to start");
-    const best = h("div", { class: "w-sub w-center" });
+    const best = h("div", { class: "w-sub w-center w-react-best" });
     let bestMs = +(localStorage.getItem("w-reaction-best") || Infinity);
     if (Number.isFinite(bestMs)) best.textContent = `best: ${bestMs} ms`;
     pad.onclick = () => {
@@ -4877,7 +4877,7 @@ reg({
           () => {
             state = "go";
             pad.className = "w-react-pad go";
-            pad.textContent = "CLICK!";
+            pad.textContent = "click now";
             t0 = performance.now();
           },
           1000 + Math.random() * 3000,
@@ -4885,8 +4885,8 @@ reg({
       } else if (state === "wait") {
         clearTimeout(to);
         state = "idle";
-        pad.className = "w-react-pad";
-        pad.textContent = "too soon! click to retry";
+        pad.className = "w-react-pad early";
+        pad.textContent = "too soon · click to retry";
       } else if (state === "go") {
         const ms = Math.round(performance.now() - t0);
         bestMs = Math.min(bestMs, ms);
@@ -4907,8 +4907,12 @@ reg({
     /^(?:tic[\s-]?tac[\s-]?toe|noughts\s+and\s+crosses|xox)$/i.test(q.trim()),
   build: () => {
     let board = Array(9).fill("");
-    const status = h("div", { class: "w-sub w-center" }, "your turn (X)");
+    const status = h("div", { class: "w-sub w-ttt-status" }, "your turn (X)");
     const grid = h("div", { class: "w-ttt" });
+    const setStatus = (text, tone = "") => {
+      status.textContent = text;
+      status.className = `w-sub w-ttt-status${tone ? ` ${tone}` : ""}`;
+    };
     const wins = [
       [0, 1, 2],
       [3, 4, 5],
@@ -4942,12 +4946,18 @@ reg({
     };
     const render = () =>
       [...grid.children].forEach((c, i) => {
-        c.textContent = board[i];
-        c.className = `w-ttt-cell${board[i] ? " filled" : ""}`;
+        const mark = board[i];
+        const fresh = mark && c.textContent !== mark;
+        c.textContent = mark;
+        c.className = `w-ttt-cell${mark ? ` filled ${mark === "X" ? "x" : "o"}` : ""}`;
+        if (fresh) {
+          void c.offsetWidth;
+          c.classList.add("place");
+        }
       });
     const reset = () => {
       board = Array(9).fill("");
-      status.textContent = "your turn (X)";
+      setStatus("your turn (X)");
       render();
     };
     for (let i = 0; i < 9; i++) {
@@ -4958,18 +4968,17 @@ reg({
         render();
         let w = winner(board);
         if (w) {
-          status.textContent = w === "tie" ? "tie!" : "you win! 🎉";
+          if (w === "tie") setStatus("tie · nobody wins");
+          else setStatus("you win 🎉", "win");
           return;
         }
         const ai = minimax(board, true).move;
         if (ai != null) board[ai] = "O";
         render();
         w = winner(board);
-        status.textContent = w
-          ? w === "tie"
-            ? "tie!"
-            : "computer wins"
-          : "your turn (X)";
+        if (!w) setStatus("your turn (X)");
+        else if (w === "tie") setStatus("tie · nobody wins");
+        else setStatus("computer wins 💀", "lose");
       };
       grid.append(c);
     }
@@ -4999,8 +5008,12 @@ reg({
     ];
     const rec = JSON.parse(localStorage.getItem("w-rps") || "[0,0,0]");
     let [wins, losses, ties] = rec;
-    const result = h("div", { class: "w-big w-center" }, "pick one");
-    const score = h("div", { class: "w-sub w-center" });
+    const result = h(
+      "div",
+      { class: "w-big w-center w-rps-result" },
+      "pick rock, paper or scissors",
+    );
+    const score = h("div", { class: "w-sub w-center w-rps-score" });
     const showScore = () => {
       score.textContent = `${wins}W – ${losses}L – ${ties}T`;
       localStorage.setItem("w-rps", JSON.stringify([wins, losses, ties]));
@@ -5008,16 +5021,22 @@ reg({
     const play = (i) => {
       const ai = Math.floor(Math.random() * 3);
       const r = (3 + i - ai) % 3;
+      let tone = "";
       if (r === 0) {
         ties++;
         result.textContent = `${choices[i][1]} vs ${choices[ai][1]} · tie`;
       } else if (r === 1) {
         wins++;
-        result.textContent = `${choices[i][1]} beats ${choices[ai][1]} · you win!`;
+        tone = "win";
+        result.textContent = `${choices[i][1]} beats ${choices[ai][1]} · you win 🎉`;
       } else {
         losses++;
-        result.textContent = `${choices[ai][1]} beats ${choices[i][1]} · you lose`;
+        tone = "lose";
+        result.textContent = `${choices[ai][1]} beats ${choices[i][1]} · you lose 💀`;
       }
+      result.className = `w-big w-center w-rps-result${tone ? ` ${tone}` : ""}`;
+      void result.offsetWidth;
+      result.classList.add("played");
       showScore();
     };
     showScore();
@@ -5056,14 +5075,20 @@ reg({
       rows: "2",
       placeholder: "start typing…",
     });
-    const out = h("div", { class: "w-sub w-center" }, "—");
+    const out = h(
+      "div",
+      { class: "w-sub w-typing-out" },
+      "type the sentence to see your speed",
+    );
     const renderPrompt = () => {
+      const at = input.value.length;
       prompt.replaceChildren(
         ...[...target].map((ch, i) => {
           const t = input.value[i];
+          const state = t == null ? "" : t === ch ? "ok" : "bad";
           return h(
             "span",
-            { class: t == null ? "" : t === ch ? "ok" : "bad" },
+            { class: i === at ? `${state} cur`.trim() : state },
             ch,
           );
         }),
@@ -5076,13 +5101,15 @@ reg({
         const mins = (performance.now() - started) / 60000;
         const wpm = Math.round(target.split(" ").length / mins);
         out.textContent = `${wpm} wpm 🎉`;
+        out.className = "w-sub w-typing-out done";
       }
     };
     const reset = () => {
       target = sentences[Math.floor(Math.random() * sentences.length)];
       input.value = "";
       started = 0;
-      out.textContent = "—";
+      out.textContent = "type the sentence to see your speed";
+      out.className = "w-sub w-typing-out";
       renderPrompt();
     };
     renderPrompt();
@@ -5888,19 +5915,17 @@ reg({
         h("option", { value: s }, s),
       ),
     );
+    bars.replaceChildren(
+      ...Array.from({ length: N }, () => h("div", { class: "w-sort-bar" })),
+    );
     const draw = (a = -1, b = -1, done = 0) => {
-      bars.replaceChildren(
-        ...arr.map((v, i) => {
-          const bar = h("div", {
-            class:
-              "w-sort-bar" +
-              (i === a || i === b ? " active" : "") +
-              (i < done ? " done" : ""),
-          });
-          bar.style.height = `${v}%`;
-          return bar;
-        }),
-      );
+      [...bars.children].forEach((bar, i) => {
+        bar.style.height = `${arr[i]}%`;
+        bar.className =
+          "w-sort-bar" +
+          (i === a || i === b ? " active" : "") +
+          (i < done ? " done" : "");
+      });
     };
     const randomize = () => {
       arr = Array.from({ length: N }, () => 5 + Math.floor(Math.random() * 95));
@@ -6026,12 +6051,16 @@ reg({
       height: SIZE * CELL,
     });
     const ctx = canvas.getContext("2d");
-    const scoreEl = h("div", { class: "w-sub" }, "score: 0");
+    const theme = getComputedStyle(document.documentElement);
+    const tok = (name) => theme.getPropertyValue(name).trim();
+    const scoreEl = h("div", { class: "w-sub w-game-score" }, "score: 0");
     const wrap = h("div", { class: "w-game", tabindex: "0" }, canvas);
     let snake, dir, nextDir, food, score, iv, dead;
     let best = +(localStorage.getItem("w-snake-best") || 0);
-    const showScore = () =>
-      (scoreEl.textContent = `score: ${score}${best ? ` · best: ${best}` : ""}`);
+    const showScore = () => {
+      scoreEl.textContent = `score: ${score}${best ? ` · best: ${best}` : ""}`;
+      scoreEl.className = "w-sub w-game-score";
+    };
     const spawn = () => {
       let p;
       do {
@@ -6052,14 +6081,16 @@ reg({
       showScore();
     };
     const draw = () => {
-      ctx.fillStyle = "#181825";
+      ctx.fillStyle = tok("--bg");
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#f38ba8";
+      ctx.fillStyle = tok("--red");
       ctx.fillRect(food[0] * CELL + 2, food[1] * CELL + 2, CELL - 4, CELL - 4);
+      ctx.fillStyle = tok("--green");
       snake.forEach((s, i) => {
-        ctx.fillStyle = i === 0 ? "#a6e3a1" : "#74c490";
+        ctx.globalAlpha = i === 0 ? 1 : 0.72;
         ctx.fillRect(s[0] * CELL + 1, s[1] * CELL + 1, CELL - 2, CELL - 2);
       });
+      ctx.globalAlpha = 1;
     };
     const tick = () => {
       dir = nextDir;
@@ -6079,16 +6110,18 @@ reg({
           localStorage.setItem("w-snake-best", best);
           showScore();
         }
-        ctx.fillStyle = "rgba(0,0,0,.6)";
+        ctx.fillStyle = "rgb(0 0 0 / 0.62)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#fff";
-        ctx.font = "15px sans-serif";
+        ctx.fillStyle = tok("--text");
+        ctx.font = "620 15px InterVar, system-ui, sans-serif";
         ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
         ctx.fillText(
           "game over · press space",
           canvas.width / 2,
           canvas.height / 2,
         );
+        scoreEl.className = "w-sub w-game-score over";
         return;
       }
       snake.unshift(head);
@@ -6177,23 +6210,10 @@ reg({
   id: "2048",
   match: (q) => /^(?:play\s+)?2048(?:\s+game)?$/i.test(q.trim()),
   build: () => {
-    let grid, score;
+    let grid, score, spawned;
     const board = h("div", { class: "w-2048" });
-    const scoreEl = h("div", { class: "w-sub" }, "score: 0");
+    const scoreEl = h("div", { class: "w-sub w-game-score" }, "score: 0");
     const wrap = h("div", { class: "w-game", tabindex: "0" }, board);
-    const colors = {
-      2: "#45475a",
-      4: "#585b70",
-      8: "#fab387",
-      16: "#f9a05c",
-      32: "#f38ba8",
-      64: "#eba0ac",
-      128: "#f9e2af",
-      256: "#a6e3a1",
-      512: "#94e2d5",
-      1024: "#89dceb",
-      2048: "#cba6f7",
-    };
     const emptyCells = () => {
       const c = [];
       for (let r = 0; r < 4; r++)
@@ -6205,24 +6225,34 @@ reg({
       if (!c.length) return;
       const [r, q] = c[Math.floor(Math.random() * c.length)];
       grid[r][q] = Math.random() < 0.9 ? 2 : 4;
+      spawned = `${r},${q}`;
     };
     const draw = () => {
       board.replaceChildren();
       for (let r = 0; r < 4; r++)
         for (let q = 0; q < 4; q++) {
           const v = grid[r][q];
-          const t = h("div", { class: "w-2048-tile" }, v || "");
+          const fresh = v && spawned === `${r},${q}`;
+          const t = h(
+            "div",
+            { class: `w-2048-tile${fresh ? " spawn" : ""}` },
+            v || "",
+          );
           if (v) {
-            t.style.background = colors[v] || "#cba6f7";
-            t.style.color = v <= 4 ? "#cdd6f4" : "#1e1e2e";
+            t.dataset.v = String(Math.min(v, 2048));
+            t.dataset.len = String(String(v).length);
+            if (v > 4) t.dataset.ink = "dark";
           }
           board.append(t);
         }
       scoreEl.textContent = `score: ${score}`;
+      scoreEl.className = "w-sub w-game-score";
+      board.classList.remove("over");
     };
     const reset = () => {
       grid = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
       score = 0;
+      spawned = null;
       addTile();
       addTile();
       draw();
@@ -6259,7 +6289,11 @@ reg({
       if (JSON.stringify(grid) !== before) {
         addTile();
         draw();
-        if (!canMove()) scoreEl.textContent = `game over · score: ${score}`;
+        if (!canMove()) {
+          scoreEl.textContent = `game over · score: ${score}`;
+          scoreEl.className = "w-sub w-game-score over";
+          board.classList.add("over");
+        }
       }
     };
     wrap.addEventListener("keydown", (e) => {
@@ -6336,9 +6370,14 @@ reg({
       COLS = 9,
       MINES = 10;
     let cells, started, dead, won, flags;
+    let shown = new Set();
     const board = h("div", { class: "w-mine-grid" });
-    const status = h("div", { class: "w-mine-status" });
-    const face = h("button", { class: "w-mine-face", html: "🙂" });
+    const status = h("div", { class: "w-mine-status", role: "status" });
+    const face = h("div", {
+      class: "w-mine-face",
+      html: "🙂",
+      "aria-hidden": "true",
+    });
     const inBounds = (r, c) => r >= 0 && c >= 0 && r < ROWS && c < COLS;
     const neighbors = (r, c) => {
       const out = [];
@@ -6390,10 +6429,23 @@ reg({
       );
     const showStatus = () => {
       const left = MINES - flags;
-      if (won) status.textContent = "you win · 😎";
-      else if (dead) status.textContent = "boom · 💀";
-      else status.textContent = `mines left: ${left}`;
-      face.innerHTML = won ? "😎" : dead ? "💀" : "🙂";
+      if (won) {
+        status.textContent = "you win 😎";
+        status.className = "w-mine-status win";
+      } else if (dead) {
+        status.textContent = "boom · you hit a mine 💀";
+        status.className = "w-mine-status lost";
+      } else {
+        status.textContent = `mines left: ${left}`;
+        status.className = "w-mine-status";
+      }
+      const next = won ? "😎" : dead ? "💀" : "🙂";
+      if (face.textContent !== next) {
+        face.textContent = next;
+        face.classList.remove("swap");
+        void face.offsetWidth;
+        face.classList.add("swap");
+      }
     };
     const draw = () => {
       board.replaceChildren();
@@ -6403,6 +6455,12 @@ reg({
           const btn = h("button", { class: "w-mine-cell" });
           if (cell.revealed) {
             btn.classList.add("revealed");
+            const key = `${r},${c}`;
+            if (!shown.has(key)) {
+              shown.add(key);
+              btn.classList.add("pop");
+              btn.style.animationDelay = `${((r + c) % 4) * 40}ms`;
+            }
             if (cell.mine) {
               btn.classList.add("w-mine-mine");
               btn.textContent = "💣";
@@ -6498,6 +6556,7 @@ reg({
       dead = false;
       won = false;
       flags = 0;
+      shown = new Set();
       draw();
     };
     const wrap = h("div", { class: "w-game", tabindex: "0" }, board);

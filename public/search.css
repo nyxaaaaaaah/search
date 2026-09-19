@@ -5455,15 +5455,33 @@ body.images-detail-sidebar-open .images-body {
   color: var(--text);
   padding: 50px 0;
   text-align: center;
-  transition: background 0.1s;
+  border-radius: var(--r-surface);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    scale var(--duration-slow) var(--ease-out);
+}
+.w-react-pad:active {
+  scale: 0.96;
+}
+.w-react-pad.early {
+  color: var(--red);
 }
 .w-react-pad.wait {
   background: var(--red);
-  color: #1e1e2e;
+  color: var(--bg);
 }
 .w-react-pad.go {
   background: var(--green);
-  color: #1e1e2e;
+  color: var(--bg);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.w-react-best {
+  font-variant-numeric: tabular-nums;
 }
 
 /* metronome */
@@ -5585,52 +5603,156 @@ body.images-detail-sidebar-open .images-body {
   background: var(--blue);
 }
 
-/* tic tac toe */
-.w-ttt {
+/* game boards */
+.w-ttt,
+.w-2048,
+.w-mine-grid {
+  --board-gap: clamp(3px, calc(var(--board-cell) * 0.09), 8px);
+  --board-pad: var(--board-gap);
+  --tile-radius: clamp(4px, calc(var(--board-cell) * 0.16), 12px);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  width: min(240px, 100%);
+  grid-template-columns: repeat(var(--board-cols), 1fr);
+  gap: var(--board-gap);
+  padding: var(--board-pad);
+  background: var(--surface0);
+  border-radius: calc(var(--tile-radius) + var(--board-pad));
+  width: calc(
+    var(--board-cell) *
+    var(--board-cols) +
+    var(--board-gap) *
+    (var(--board-cols) - 1) +
+    var(--board-pad) *
+    2
+  );
+  max-width: 100%;
   margin: 0 auto;
 }
-.w-ttt-cell {
+.w-ttt-cell,
+.w-2048-tile,
+.w-mine-cell {
   aspect-ratio: 1;
-  background: var(--bg);
-  border: 1px solid var(--surface0);
-  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: none;
+  border-radius: var(--tile-radius);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+@keyframes w-tile-in {
+  from {
+    scale: 0.95;
+    opacity: 0;
+  }
+}
+
+/* tic tac toe */
+.w-ttt {
+  --board-cols: 3;
+  --board-cell: 72px;
+}
+.w-ttt-cell {
+  background: var(--bg);
   font-size: 2.2rem;
-  font-weight: 700;
+  font-weight: 620;
+  letter-spacing: -0.03em;
   cursor: pointer;
   color: var(--blue);
+  transition:
+    background var(--duration-base) var(--ease-out),
+    scale var(--duration-slow) var(--ease-out);
+}
+@media (hover: hover) {
+  .w-ttt-cell:not(.filled):hover {
+    background: var(--surface1);
+  }
+}
+.w-ttt-cell:not(.filled):active {
+  scale: 0.96;
+}
+.w-ttt-cell.o {
+  color: var(--mauve);
 }
 .w-ttt-cell.filled {
   cursor: default;
 }
+.w-ttt-cell.place {
+  animation: w-tile-in var(--duration-slow) var(--ease-out);
+}
+.w-ttt-status {
+  text-align: center;
+  color: var(--subtext);
+  text-wrap: balance;
+}
+.w-ttt-status.win {
+  color: var(--green);
+}
+.w-ttt-status.lose {
+  color: var(--red);
+}
+
+/* rock paper scissors */
+.w-rps-result {
+  text-wrap: balance;
+  letter-spacing: -0.02em;
+}
+.w-rps-result.win {
+  color: var(--green);
+}
+.w-rps-result.lose {
+  color: var(--red);
+}
+.w-rps-score {
+  font-variant-numeric: tabular-nums;
+}
+.w-rps-result.played {
+  animation: w-rps-swap var(--duration-slow) var(--ease-out);
+}
+@keyframes w-rps-swap {
+  from {
+    opacity: 0;
+    scale: 0.96;
+    filter: blur(4px);
+  }
+}
 
 /* typing */
 .w-typing-prompt {
-  font-size: 1.1rem;
-  line-height: 1.6;
-  letter-spacing: 0.02em;
-  font-family: ui-monospace, monospace;
+  font-size: 1.15rem;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
   background: var(--bg);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid var(--surface0);
+  border-radius: var(--r-surface);
+  padding: 14px;
+  border: 1px solid var(--line);
 }
 .w-typing-prompt span {
-  color: var(--subtext);
+  color: var(--muted);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 .w-typing-prompt span.ok {
-  color: var(--green);
+  color: var(--text);
 }
 .w-typing-prompt span.bad {
   color: var(--red);
-  background: rgba(243, 139, 168, 0.2);
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--red) 22%, transparent);
+  border-radius: 3px;
+}
+.w-typing-prompt span.cur {
+  box-shadow: inset 0 -2px 0 0 var(--blue);
+}
+.w-typing-out {
+  text-align: center;
+  color: var(--subtext);
+  font-variant-numeric: tabular-nums;
+}
+.w-typing-out.done {
+  color: var(--green);
+  font-size: 1.7rem;
+  font-weight: 620;
+  letter-spacing: -0.03em;
+  animation: w-tile-in var(--duration-slow) var(--ease-out);
 }
 
 /* json / jwt */
@@ -5790,18 +5912,18 @@ body.images-detail-sidebar-open .images-body {
 .w-sort-bars {
   display: flex;
   align-items: flex-end;
-  gap: 2px;
+  gap: 3px;
   height: 160px;
-  padding: 4px;
+  padding: 6px;
   background: var(--bg);
-  border: 1px solid var(--surface0);
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
 }
 .w-sort-bar {
   flex: 1;
   background: var(--surface1);
-  border-radius: 2px 2px 0 0;
-  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  min-height: 3px;
 }
 .w-sort-bar.active {
   background: var(--red);
@@ -5813,74 +5935,125 @@ body.images-detail-sidebar-open .images-body {
 /* games (snake / 2048) */
 .w-game {
   outline: none;
-  border-radius: 10px;
+  border-radius: var(--r-surface);
   width: max-content;
   max-width: 100%;
   margin: 0 auto;
   cursor: pointer;
 }
-.w-game:focus {
-  box-shadow: 0 0 0 2px var(--blue);
+.w-game:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 .w-game-canvas {
   display: block;
-  border-radius: 8px;
+  border-radius: var(--r-surface);
+  outline: 1px solid rgb(255 255 255 / 0.08);
+  outline-offset: -1px;
   max-width: 100%;
+}
+.w-game-score {
+  text-align: center;
+  color: var(--subtext);
+  font-variant-numeric: tabular-nums;
+}
+.w-game-score.over {
+  color: var(--red);
 }
 .w-2048 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  background: var(--surface0);
-  padding: 8px;
-  border-radius: 8px;
-  width: 280px;
-  max-width: 100%;
+  --board-cols: 4;
+  --board-cell: 60px;
+  transition: opacity var(--duration-slow) var(--ease-out);
+}
+.w-2048.over {
+  opacity: 0.55;
 }
 .w-2048-tile {
-  aspect-ratio: 1;
   background: var(--bg);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-size: 1.45rem;
+  font-weight: 620;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+.w-2048-tile[data-len="3"] {
+  font-size: 1.2rem;
+}
+.w-2048-tile[data-len="4"] {
+  font-size: 1rem;
+}
+.w-2048-tile[data-v="2"] {
+  background: var(--surface0);
+}
+.w-2048-tile[data-v="4"] {
+  background: var(--surface1);
+}
+.w-2048-tile[data-v="8"] {
+  background: color-mix(in srgb, var(--yellow) 55%, var(--surface1));
+}
+.w-2048-tile[data-v="16"] {
+  background: var(--yellow);
+}
+.w-2048-tile[data-v="32"] {
+  background: color-mix(in srgb, var(--red) 70%, var(--yellow));
+}
+.w-2048-tile[data-v="64"] {
+  background: var(--red);
+}
+.w-2048-tile[data-v="128"] {
+  background: color-mix(in srgb, var(--mauve) 60%, var(--red));
+}
+.w-2048-tile[data-v="256"] {
+  background: var(--mauve);
+}
+.w-2048-tile[data-v="512"] {
+  background: color-mix(in srgb, var(--blue) 70%, var(--mauve));
+}
+.w-2048-tile[data-v="1024"] {
+  background: var(--blue);
+}
+.w-2048-tile[data-v="2048"] {
+  background: var(--green);
+}
+.w-2048-tile[data-ink="dark"] {
+  color: var(--bg);
+}
+.w-2048-tile.spawn {
+  animation: w-tile-in var(--duration-slow) var(--ease-out);
 }
 
 /* minesweeper */
 .w-mine-grid {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 2px;
-  background: var(--surface0);
-  padding: 6px;
-  border-radius: 8px;
-  width: 288px;
-  max-width: 100%;
+  --board-cols: 9;
+  --board-cell: 32px;
 }
 .w-mine-cell {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--surface1);
-  border: none;
-  border-radius: 4px;
   font-size: 0.95rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-weight: 620;
   color: var(--text);
   cursor: pointer;
-  user-select: none;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    scale var(--duration-slow) var(--ease-out);
 }
-.w-mine-cell:hover:not(.revealed) {
-  background: var(--muted);
+@media (hover: hover) {
+  .w-mine-cell:not(.revealed):hover {
+    background: color-mix(in srgb, var(--surface1) 78%, var(--text));
+  }
+}
+.w-mine-cell:not(.revealed):active {
+  scale: 0.96;
+}
+.w-mine-cell:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 .w-mine-cell.revealed {
   background: var(--bg);
   cursor: default;
+}
+.w-mine-cell.pop {
+  animation: w-tile-in var(--duration-slow) var(--ease-out) backwards;
 }
 .w-mine-cell.flag {
   background: var(--surface1);
@@ -5916,17 +6089,59 @@ body.images-detail-sidebar-open .images-body {
   text-align: center;
   color: var(--subtext);
   font-variant-numeric: tabular-nums;
+  text-wrap: balance;
+}
+.w-mine-status.win {
+  color: var(--green);
+}
+.w-mine-status.lost {
+  color: var(--red);
 }
 .w-mine-face {
   background: var(--surface0);
-  border: none;
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 1.1rem;
-  cursor: pointer;
+  border-radius: var(--r-chip);
+  min-width: 48px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+  user-select: none;
 }
-.w-mine-face:hover {
-  background: var(--surface1);
+.w-mine-face.swap {
+  animation: w-face-swap var(--duration-slow) var(--ease-out);
+}
+@keyframes w-face-swap {
+  from {
+    scale: 0.95;
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .w-ttt-cell.place,
+  .w-2048-tile.spawn,
+  .w-mine-cell.pop,
+  .w-mine-face.swap,
+  .w-rps-result.played,
+  .w-typing-out.done {
+    animation: none;
+  }
+  .w-ttt-cell,
+  .w-mine-cell,
+  .w-react-pad {
+    transition-property: background, color;
+  }
+  .w-ttt-cell:active,
+  .w-mine-cell:not(.revealed):active,
+  .w-react-pad:active {
+    scale: 1;
+  }
+  .w-2048.over {
+    transition: none;
+  }
 }
 
 /* guitar chord */
