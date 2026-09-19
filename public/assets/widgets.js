@@ -434,6 +434,7 @@ reg({
       setTimeout(() => {
         word.textContent = "not";
         word.style.color = "";
+        word.classList.add("swapped");
       }, 300);
     }
     return card(null, null, h("div", { class: "w-notfurry" }, img, text));
@@ -458,14 +459,16 @@ const quiz = ({
     match: (q) => (match.test(q.trim()) ? {} : null),
     build: () => {
       let idx = 0;
+      let back = false;
       const picks = [];
-      const fill = h("div", { class: `w-quiz-fill` });
+      const fill = h("div", { class: "w-quiz-fill" });
       const track = h("div", { class: "w-quiz-track" }, fill);
       const pane = h("div", { class: "w-quiz-pane" });
       const root = h("div", { class: "w-quiz" }, track, pane);
 
       const restart = () => {
         idx = 0;
+        back = true;
         picks.length = 0;
         show();
       };
@@ -488,7 +491,7 @@ const quiz = ({
         pane.replaceChildren(
           h(
             "div",
-            { class: "w-quiz-card" },
+            { class: "w-quiz-card w-quiz-result" },
             gauge,
             h("div", { class: "w-quiz-verdict" }, tier.title),
             h("div", { class: "w-quiz-line" }, tier.line),
@@ -506,7 +509,7 @@ const quiz = ({
         let start;
         const tick = (t) => {
           start ??= t;
-          const p = Math.min(1, (t - start) / 900);
+          const p = Math.min(1, (t - start) / 700);
           const e = 1 - (1 - p) ** 3;
           num.textContent = fmt(Math.round(pct * e));
           setArc((pct / 100) * e);
@@ -516,18 +519,20 @@ const quiz = ({
         setTimeout(() => {
           num.textContent = fmt(pct);
           setArc(pct / 100);
-        }, 950);
+        }, 750);
       };
 
       const show = () => {
         if (idx >= questions.length) return showResult();
+        const dir = back ? "rev" : "fwd";
+        back = false;
         track.style.display = "";
-        fill.style.transform = `scaleX(${idx / questions.length})`;
+        fill.style.transform = `scaleX(${(idx + 1) / questions.length})`;
         const { q, opts } = questions[idx];
         pane.replaceChildren(
           h(
             "div",
-            { class: "w-quiz-card" },
+            { class: `w-quiz-card w-quiz-${dir}` },
             h(
               "div",
               { class: "w-quiz-top" },
@@ -537,6 +542,7 @@ const quiz = ({
                   html: "&larr; back",
                   onclick: () => {
                     idx--;
+                    back = true;
                     picks.pop();
                     show();
                   },
@@ -1231,7 +1237,7 @@ reg({
       label.className = "w-coin-label";
 
       const result = Math.random() < 0.5 ? "heads" : "tails";
-      const base = rotation + 5 * 360;
+      const base = rotation + 3 * 360;
       const want = result === "heads" ? 0 : 180;
       let target = base - (base % 360) + want;
       if (target < base) target += 360;
@@ -1249,7 +1255,7 @@ reg({
         label.className = `w-coin-label ${result}`;
         drawTally();
         flipping = false;
-      }, 1150);
+      }, 560);
     };
 
     stage.onclick = flip;
@@ -1298,7 +1304,7 @@ reg({
         const v = 1 + Math.floor(Math.random() * sides);
         sum += v;
         const d = h("div", { class: "w-die" }, v);
-        d.style.animationDelay = `${i * 60}ms`;
+        d.style.animationDelay = `${Math.min(i, 3) * 55}ms`;
         dice.append(d);
       }
       total.textContent = n > 1 ? `total: ${sum}` : "";
@@ -1341,12 +1347,15 @@ reg({
       type: "number",
       value: hi,
     });
-    const out = h("div", { class: "w-big w-mono w-rng-out" }, "—");
+    const out = h("div", { class: "w-big w-rng-out" }, "—");
     const pick = () => {
       const a = Math.ceil(+loIn.value),
         b = Math.floor(+hiIn.value);
       out.textContent =
         a > b ? "—" : a + Math.floor(Math.random() * (b - a + 1));
+      out.classList.remove("rolled");
+      void out.offsetWidth;
+      out.classList.add("rolled");
     };
     const onEnter = (e) => {
       if (e.key === "Enter") pick();
@@ -1407,19 +1416,20 @@ reg({
       { class: "w-8ball" },
       h("div", { class: "w-8ball-window" }, "8"),
     );
-    let shakeTo = null,
-      leanB = false;
+    let shakeTo = null;
     const ask = () => {
-      ball.firstChild.textContent = "…";
+      const win = ball.firstChild;
+      win.textContent = "…";
       if (shakeTo) clearTimeout(shakeTo);
-      leanB = !leanB;
-      ball.classList.remove("shake-a", "shake-b");
-      ball.classList.add(leanB ? "shake-b" : "shake-a");
+      ball.classList.remove("shaking");
+      win.classList.remove("revealed");
+      void ball.offsetWidth;
+      ball.classList.add("shaking");
       shakeTo = setTimeout(() => {
-        ball.classList.remove("shake-a", "shake-b");
-        ball.firstChild.textContent =
-          ans[Math.floor(Math.random() * ans.length)];
-      }, 260);
+        ball.classList.remove("shaking");
+        win.textContent = ans[Math.floor(Math.random() * ans.length)];
+        win.classList.add("revealed");
+      }, 420);
     };
     ball.onclick = ask;
     return card(
@@ -1446,6 +1456,9 @@ reg({
       const r = Math.random() < 0.5;
       out.textContent = r ? "yes" : "no";
       out.style.color = r ? "var(--green)" : "var(--red)";
+      out.classList.remove("rolled");
+      void out.offsetWidth;
+      out.classList.add("rolled");
     };
     go();
     return card(
@@ -1476,13 +1489,16 @@ reg({
   },
   build: ({ items }) => {
     const out = h("div", { class: "w-big w-picker-out" }, "—");
+    let spin = null;
     const go = () => {
-      let i = 0,
-        n = 14;
+      clearTimeout(spin);
+      const n = 8;
+      let i = Math.floor(Math.random() * items.length);
+      const end = i + n;
       const tick = () => {
         out.textContent = items[i % items.length];
         i++;
-        if (i < n) setTimeout(tick, 60 + i * 12);
+        if (i < end) spin = setTimeout(tick, 30 + (i - end + n) * 14);
         else {
           out.classList.add("flash");
           requestAnimationFrame(() => out.classList.remove("flash"));
