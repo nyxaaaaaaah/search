@@ -5335,26 +5335,26 @@ reg({
       rows: "4",
       placeholder: '{"hello": "world"}',
     });
-    const out = h("pre", { class: "w-out w-mono w-json-out" });
+    const out = h("pre", { class: "w-code w-json-out" });
     const run = () => {
       if (!input.value.trim()) {
         out.textContent = "";
-        out.className = "w-out w-mono w-json-out";
+        out.className = "w-code w-json-out";
         return;
       }
       try {
-        out.className = "w-out w-mono w-json-out";
+        out.className = "w-code w-json-out";
         highlightInto(out, JSON.stringify(JSON.parse(input.value), null, 2));
       } catch (e) {
-        out.textContent = `✗ ${e.message}`;
-        out.className = "w-out w-mono w-json-out err";
+        out.textContent = e.message;
+        out.className = "w-code w-json-out err";
       }
     };
     input.oninput = run;
     return card(
       "json formatter",
-      null,
-      input,
+      "parsed and formatted in your browser",
+      h("label", { class: "w-label col" }, "json", input),
       h(
         "div",
         { class: "w-out-row" },
@@ -5381,10 +5381,17 @@ reg({
       token,
     );
     const out = h("div", { class: "w-jwt-out" });
+    const note = h("div", { class: "w-note" });
     const run = () => {
       out.replaceChildren();
       const parts = input.value.trim().split(".");
-      if (parts.length < 2) return;
+      if (parts.length < 2) {
+        note.textContent = input.value.trim()
+          ? "that isn't a token yet. a jwt looks like header.payload.signature"
+          : "";
+        return;
+      }
+      note.textContent = "";
       const labels = ["header", "payload"];
       parts.slice(0, 2).forEach((p, i) => {
         try {
@@ -5393,7 +5400,7 @@ reg({
               escape(atob(p.replace(/-/g, "+").replace(/_/g, "/"))),
             ),
           );
-          const pre = h("pre", { class: "w-out w-mono" });
+          const pre = h("pre", { class: "w-code" });
           out.append(
             h(
               "div",
@@ -5412,7 +5419,8 @@ reg({
     return card(
       "jwt decoder",
       "decoded in your browser, not sent anywhere",
-      input,
+      h("label", { class: "w-label col" }, "token", input),
+      note,
       out,
     );
   },
@@ -5443,7 +5451,10 @@ reg({
       { class: "w-textarea", rows: "2", placeholder: "text to hash…" },
       text,
     );
-    const out = h("div", { class: "w-out w-mono", "aria-live": "polite" });
+    const out = h("div", {
+      class: "w-code w-hash-out",
+      "aria-live": "polite",
+    });
     const run = async () => {
       if (!input.value) {
         out.textContent = "";
@@ -5470,9 +5481,9 @@ reg({
     run();
     return card(
       "hash generator",
-      null,
-      h("div", { class: "w-row" }, sel),
-      input,
+      "hashed in your browser, not sent anywhere",
+      h("label", { class: "w-label col" }, "algorithm", sel),
+      h("label", { class: "w-label col" }, "text", input),
       h(
         "div",
         { class: "w-out-row" },
@@ -5580,7 +5591,8 @@ reg({
       { class: "w-textarea", rows: "3", placeholder: "test string…" },
       "the year is 2024 and 1999",
     );
-    const out = h("div", { class: "w-out" });
+    const status = h("div", { class: "w-rx-status", "aria-live": "polite" });
+    const out = h("pre", { class: "w-code w-rx-out" });
     const run = () => {
       try {
         const re = new RegExp(pat.value, flags.value);
@@ -5611,13 +5623,13 @@ reg({
           }
         }
         html += esc(str.slice(last));
-        out.innerHTML =
-          `<div class="w-sub">${count} match${count === 1 ? "" : "es"}</div>` +
-          html;
-        out.classList.remove("err");
+        out.innerHTML = html;
+        status.textContent = `${count} match${count === 1 ? "" : "es"}`;
+        status.classList.remove("err");
       } catch (e) {
-        out.textContent = e.message;
-        out.classList.add("err");
+        out.textContent = test.value.slice(0, 5000);
+        status.textContent = e.message;
+        status.classList.add("err");
       }
     };
     const esc = (s) =>
@@ -5630,8 +5642,14 @@ reg({
     return card(
       "regex tester",
       null,
-      h("div", { class: "w-row" }, pat, flags),
-      test,
+      h(
+        "div",
+        { class: "w-row w-rx-row" },
+        h("label", { class: "w-label col w-rx-pat" }, "pattern", pat),
+        h("label", { class: "w-label col w-rx-flags" }, "flags", flags),
+      ),
+      h("label", { class: "w-label col" }, "test string", test),
+      status,
       out,
     );
   },
@@ -5684,7 +5702,12 @@ reg({
     return card(
       "markdown preview",
       null,
-      h("div", { class: "w-md-split" }, input, out),
+      h(
+        "div",
+        { class: "w-md-split" },
+        h("label", { class: "w-label col" }, "markdown", input),
+        h("div", { class: "w-label col" }, h("span", null, "preview"), out),
+      ),
       h(
         "div",
         { class: "w-btn-row" },
@@ -5724,24 +5747,27 @@ reg({
   },
   build: ({ ch }) => {
     const cp = ch.codePointAt(0);
+    const point = `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`;
     return card(
       "character info",
-      ch,
+      point,
+      h("div", { class: "w-char-hero" }, ch),
       h(
         "div",
-        { class: "w-calc-out" },
+        { class: "w-calc-out w-charinfo" },
         ...[
-          ["character", ch],
-          ["code point", `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`],
-          ["decimal", cp],
-          ["html entity", `&#${cp};`],
+          ["character", ch, true],
+          ["code point", point, true],
+          ["decimal", cp, false],
+          ["html entity", `&#${cp};`, true],
           [
             "utf-8 bytes",
             [...new TextEncoder().encode(ch)]
               .map((b) => b.toString(16))
               .join(" "),
+            true,
           ],
-        ].map(([l, v]) =>
+        ].map(([l, v, mono]) =>
           h(
             "div",
             { class: "w-stat" },
@@ -5749,7 +5775,7 @@ reg({
             h(
               "span",
               { class: "w-row" },
-              h("span", { class: "w-stat-val w-mono" }, v),
+              h("span", { class: `w-stat-val${mono ? " w-mono" : ""}` }, v),
               copyBtn(() => String(v)),
             ),
           ),
@@ -6001,8 +6027,12 @@ reg({
   },
   build: ({ expr }) => {
     const input = h("input", { class: "w-input w-mono", value: expr });
-    const desc = h("div", { class: "w-big" });
+    const desc = h("div", { class: "w-cron-desc", "aria-live": "polite" });
     const next = h("div", { class: "w-calc-out" });
+    const say = (text, bad) => {
+      desc.textContent = text;
+      desc.classList.toggle("err", !!bad);
+    };
     const FIELDS = [
       ["minute", 0, 59],
       ["hour", 0, 23],
@@ -6034,7 +6064,7 @@ reg({
     const run = () => {
       const parts = input.value.trim().split(/\s+/);
       if (parts.length !== 5) {
-        desc.textContent = "needs 5 fields: min hour day month weekday";
+        say("needs 5 fields: minute, hour, day, month, weekday", true);
         next.replaceChildren();
         return;
       }
@@ -6042,7 +6072,7 @@ reg({
       try {
         sets = FIELDS.map(([, lo, hi], i) => parseField(parts[i], lo, hi));
       } catch {
-        desc.textContent = "invalid expression";
+        say("that expression doesn't parse yet", true);
         next.replaceChildren();
         return;
       }
@@ -6050,7 +6080,7 @@ reg({
         .map((p, i) => (p === "*" ? null : `${FIELDS[i][0]} ${p}`))
         .filter(Boolean)
         .join(", ");
-      desc.textContent = human ? `runs at ${human}` : "runs every minute";
+      say(human ? `runs at ${human}` : "runs every minute", false);
       const runs = [];
       const d = new Date();
       d.setSeconds(0, 0);
@@ -6072,21 +6102,31 @@ reg({
         d.setMinutes(d.getMinutes() + 1);
       }
       next.replaceChildren(
-        ...runs.map((r) =>
+        ...runs.map((r, i) =>
           h(
             "div",
             { class: "w-stat" },
-            h("span", { class: "w-stat-label" }, "next run"),
-            h("span", { class: "w-stat-val w-mono" }, r.toLocaleString()),
+            h(
+              "span",
+              { class: "w-stat-label" },
+              i === 0 ? "next run" : `run ${i + 1}`,
+            ),
+            h("span", { class: "w-stat-val" }, r.toLocaleString()),
           ),
         ),
       );
       if (!runs.length)
-        next.append(h("div", { class: "w-sub" }, "no run within a year"));
+        next.append(h("div", { class: "w-note" }, "no run within a year"));
     };
     input.oninput = run;
     run();
-    return card("cron expression", null, input, desc, next);
+    return card(
+      "cron expression",
+      null,
+      h("label", { class: "w-label col" }, "expression", input),
+      desc,
+      next,
+    );
   },
 });
 
@@ -6898,7 +6938,8 @@ reg({
       rows: "5",
       placeholder: "changed",
     });
-    const out = h("div", { class: "w-out w-mono w-diff-out" });
+    const out = h("div", { class: "w-code w-diff-out" });
+    const stat = h("div", { class: "w-diff-stat", "aria-live": "polite" });
     let lastRows = [];
     const run = () => {
       const la = a.value.split("\n"),
@@ -6906,9 +6947,12 @@ reg({
       const n = la.length,
         m = lb.length;
       if (n * m > 4e6) {
-        out.textContent = "too large to diff (try shorter inputs)";
+        out.textContent = "";
+        stat.textContent = "too long to compare, try shorter inputs";
+        stat.classList.add("err");
         return;
       }
+      stat.classList.remove("err");
       const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
       for (let i = n - 1; i >= 0; i--)
         for (let j = m - 1; j >= 0; j--)
@@ -6935,6 +6979,12 @@ reg({
       while (i < n) rows.push(["-", la[i++]]);
       while (j < m) rows.push(["+", lb[j++]]);
       lastRows = rows;
+      const added = rows.filter(([s]) => s === "+").length;
+      const removed = rows.filter(([s]) => s === "-").length;
+      stat.textContent =
+        added || removed
+          ? `${added} added, ${removed} removed`
+          : "the two sides match";
       out.replaceChildren(
         ...rows.map(([s, t]) =>
           h(
@@ -6951,7 +7001,13 @@ reg({
     return card(
       "text diff",
       "line-by-line comparison",
-      h("div", { class: "w-md-split" }, a, b),
+      h(
+        "div",
+        { class: "w-md-split" },
+        h("label", { class: "w-label col" }, "original", a),
+        h("label", { class: "w-label col" }, "changed", b),
+      ),
+      stat,
       h(
         "div",
         { class: "w-out-row" },
@@ -7127,7 +7183,7 @@ reg({
       {
         1: "informational response",
         2: "request succeeded",
-        3: "further action needed (redirect)",
+        3: "redirect, further action needed",
         4: "client error",
         5: "server error",
       }[cls] || "";
@@ -7136,11 +7192,16 @@ reg({
       null,
       h(
         "div",
-        { class: "w-out-row" },
-        h("div", { class: "w-big" }, `${code} ${txt}`),
+        { class: "w-out-row w-http-row" },
+        h(
+          "div",
+          { class: `w-http-hero c${cls}` },
+          h("div", { class: "w-http-code" }, code),
+          h("div", { class: "w-http-txt" }, txt),
+        ),
         copyBtn(() => `${code} ${txt}`),
       ),
-      h("div", { class: "w-sub" }, note),
+      h("div", { class: "w-http-note" }, note),
     );
   },
 });
@@ -7156,10 +7217,11 @@ reg({
   build: ({ oct }) => {
     const groups = ["owner", "group", "public"];
     const perms = ["r", "w", "x"];
+    const permNames = ["read", "write", "execute"];
     const state = oct.split("").map((d) => +d);
     const boxes = [];
-    const octEl = h("div", { class: "w-big w-mono" });
-    const symEl = h("div", { class: "w-sub w-mono" });
+    const octEl = h("div", { class: "w-chmod-oct w-mono" });
+    const symEl = h("div", { class: "w-chmod-sym w-mono" });
     const upd = () => {
       const digits = boxes.map((g) =>
         g.reduce((acc, cb, i) => acc + (cb.checked ? [4, 2, 1][i] : 0), 0),
@@ -7178,14 +7240,14 @@ reg({
         { class: "w-chmod-group" },
         h("div", { class: "w-chmod-label" }, g),
       );
-      perms.forEach((p, pi) => {
+      permNames.forEach((name, pi) => {
         const cb = h("input", {
           type: "checkbox",
           ...(state[gi] & [4, 2, 1][pi] ? { checked: "" } : {}),
         });
         cb.onchange = upd;
         row.push(cb);
-        groupEl.append(h("label", { class: "w-chk" }, cb, p));
+        groupEl.append(h("label", { class: "w-chk" }, cb, name));
       });
       grid.append(groupEl);
     });
@@ -7193,14 +7255,13 @@ reg({
     return card(
       "chmod calculator",
       null,
-      grid,
       h(
         "div",
-        { class: "w-row" },
-        octEl,
-        symEl,
+        { class: "w-chmod-out" },
+        h("div", { class: "w-chmod-vals" }, octEl, symEl),
         copyBtn(() => octEl.textContent),
       ),
+      grid,
     );
   },
 });
@@ -7224,7 +7285,10 @@ reg({
       max: "25",
       value: ((shift % 26) + 26) % 26,
     });
-    const out = h("div", { class: "w-out w-mono", "aria-live": "polite" });
+    const out = h("div", {
+      class: "w-code w-caesar-out",
+      "aria-live": "polite",
+    });
     const run = () => {
       const s = ((+shiftIn.value % 26) + 26) % 26;
       shiftVal.textContent = s;
@@ -7238,8 +7302,14 @@ reg({
     return card(
       "caesar cipher",
       null,
-      input,
-      h("label", { class: "w-label" }, "shift: ", shiftVal, shiftIn),
+      h("label", { class: "w-label col" }, "text", input),
+      h(
+        "label",
+        { class: "w-label w-caesar-shift" },
+        "shift",
+        shiftVal,
+        shiftIn,
+      ),
       h(
         "div",
         { class: "w-out-row" },
@@ -7290,7 +7360,11 @@ reg({
       return card(
         "subnet calculator",
         null,
-        h("div", { class: "w-sub" }, "invalid IPv4 address"),
+        h(
+          "div",
+          { class: "w-note" },
+          "that isn't a valid IPv4 address. try 192.168.1.0/24",
+        ),
       );
     const ipNum =
       ((octs[0] << 24) | (octs[1] << 16) | (octs[2] << 8) | octs[3]) >>> 0;
@@ -7301,20 +7375,34 @@ reg({
       [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
     const hosts = cidr >= 31 ? 0 : broadcast - network - 1;
     const rows = [
-      ["network", toIp(network)],
-      ["broadcast", toIp(broadcast)],
-      ["netmask", toIp(mask)],
-      ["first host", cidr >= 31 ? "—" : toIp(network + 1)],
-      ["last host", cidr >= 31 ? "—" : toIp(broadcast - 1)],
-      ["usable hosts", Math.max(0, hosts).toLocaleString()],
+      ["network", toIp(network), true],
+      ["broadcast", toIp(broadcast), true],
+      ["netmask", toIp(mask), true],
+      ["first host", cidr >= 31 ? "—" : toIp(network + 1), true],
+      ["last host", cidr >= 31 ? "—" : toIp(broadcast - 1), true],
+      ["usable hosts", Math.max(0, hosts).toLocaleString(), false],
     ];
     return card(
       `subnet · ${ip}/${cidr}`,
       null,
       h(
         "div",
+        { class: "w-subnet-hero" },
+        h(
+          "div",
+          { class: "w-subnet-range w-mono" },
+          `${toIp(network)}/${cidr}`,
+        ),
+        h(
+          "div",
+          { class: "w-subnet-hosts" },
+          `${Math.max(0, hosts).toLocaleString()} usable hosts`,
+        ),
+      ),
+      h(
+        "div",
         { class: "w-calc-out" },
-        ...rows.map(([l, v]) =>
+        ...rows.map(([l, v, mono]) =>
           h(
             "div",
             { class: "w-stat" },
@@ -7322,7 +7410,7 @@ reg({
             h(
               "span",
               { class: "w-row" },
-              h("span", { class: "w-stat-val w-mono" }, v),
+              h("span", { class: `w-stat-val${mono ? " w-mono" : ""}` }, v),
               copyBtn(() => String(v)),
             ),
           ),
