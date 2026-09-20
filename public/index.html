@@ -411,7 +411,7 @@
         const ctx = canvas.getContext("2d");
         const img = new Image();
         const mascot = document.documentElement.dataset.mascot;
-        img.src = mascot ? `/s/${mascot}.png` : "/s/teto.png";
+        img.src = mascot ? `/s/${mascot}.png` : "/s/nyxah.png";
 
         const dpr = window.devicePixelRatio || 1;
         const resize = () => {
@@ -462,7 +462,7 @@
         };
 
         const spawn = () => {
-          const rect = teto.getBoundingClientRect();
+          const rect = nyxah.getBoundingClientRect();
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
           const count = window.innerWidth < 600 ? 18 : 32;
