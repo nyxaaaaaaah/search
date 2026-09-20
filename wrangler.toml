@@ -1,4 +1,4 @@
-name = "metasearch"
+name = "search"
 main = "src/index.js"
 compatibility_date = "2025-06-01"
 
@@ -13,5 +13,5 @@ not_found_handling = "none"
 
 [[d1_databases]]
 binding = "KAGI_DB"
-database_name = "kagi-sessions"
-database_id = "74fab9be-4e84-4fa7-875d-5b42d3b2c513"
+database_name = "kagi_db"
+database_id = "74b1e7b2-1d8b-403c-84c1-1ee142c73c2d"
