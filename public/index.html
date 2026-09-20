@@ -43,7 +43,7 @@
       }
 
       :root {
-        color-scheme: purple-dark;
+        color-scheme: dark;
         interpolate-size: allow-keywords;
         font-family:
           InstrumentSans,
@@ -139,9 +139,9 @@
         .search-bar {
           height: 40px;
           background-color: #313244;
-          border: 14px solid #7f849c78;
+          border: 2px solid #7f849c78;
           width: 100%;
-          border-radius: 13px;
+          border-radius: 29px;
           display: flex;
           max-width: 672px;
           cursor: text;
@@ -232,9 +232,9 @@
       .meowing-badge {
         display: flex;
         align-items: center;
-        border: 6px solid #7f849c78;
+        border: 2px solid #7f849c78;
         padding: 5px 8px;
-        border-radius: 8px;
+        border-radius: 10px;
         margin-top: 3em;
         color: var(--text);
         cursor: pointer;
@@ -370,8 +370,8 @@
       });
 
       (() => {
-        const teto = document.querySelector(".teto");
-        if (!teto) return;
+        const nyxah = document.querySelector(".nyxah");
+        if (!nyxah) return;
 
         const hitCanvas = document.createElement("canvas");
         const hitCtx = hitCanvas.getContext("2d", { willReadFrequently: true });
@@ -380,8 +380,8 @@
           hitCanvas.height = teto.naturalHeight;
           hitCtx.drawImage(teto, 0, 0);
         };
-        if (teto.complete && teto.naturalWidth) setupHit();
-        else teto.addEventListener("load", setupHit, { once: true });
+        if (nyxah.complete && nyxah.naturalWidth) setupHit();
+        else nyxah.addEventListener("load", setupHit, { once: true });
 
         const isOnPlushie = (e) => {
           if (!hitCanvas.width) return false;
@@ -396,11 +396,11 @@
           }
         };
 
-        teto.addEventListener("pointermove", (e) => {
-          teto.classList.toggle("is-on", isOnPlushie(e));
+        nyxah.addEventListener("pointermove", (e) => {
+          nyxah.classList.toggle("is-on", isOnPlushie(e));
         });
-        teto.addEventListener("pointerleave", () => {
-          teto.classList.remove("is-on");
+        nyxah.addEventListener("pointerleave", () => {
+          nyxah.classList.remove("is-on");
         });
 
         const canvas = document.createElement("canvas");
