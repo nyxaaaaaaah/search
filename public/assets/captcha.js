@@ -1,6 +1,6 @@
 export const solveCaptcha = (captcha) => {
   return new Promise((resolve) => {
-    document.body.innerHTML = `<div class="captcha-loader"><h1>brave is checking if you're human, please wait…</h1><div class="progress-bar"><div class="progress"></div></div></div>`;
+    document.body.innerHTML = `<div class="captcha-loader"><h1>You're searching too fast, take a break while we check if you're a human or some kind of mediocre robot. </h1><div class="progress-bar"><div class="progress"></div></div></div>`;
 
     const frame = document.createElement("iframe");
     frame.style.width = "10px";
